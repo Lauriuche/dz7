@@ -1,416 +1,1995 @@
 <!DOCTYPE html>
-<html lang="pt-pt">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>DZ7 Lava Jato | Link na Bio</title>
-    
-    <!-- PWA Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#000000">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>DZ7 | Premium Detailing</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
-        // --- CONFIGURAÇÃO ---
-        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'dz7-lavajato-app';
-        const apiKey = ""; // Gemini API Key
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-        let services = [];
-        let stream = null;
+:root{
+  --c:#22d3ee;
+  --c2:rgba(34,211,238,0.12);
+  --c3:rgba(34,211,238,0.22);
+  --bg:#000;
+  --surf:rgba(6,14,16,0.92);
+  --txt:#e2e8f0;
+  --muted:rgba(148,163,184,0.4);
+}
 
-        // Inicialização Segura
-        window.onload = async () => {
-            lucide.createIcons();
-            
-            // Garante que a câmara está desligada ao iniciar
-            stopCamera();
+html{scroll-behavior:smooth}
 
-            const initAuth = async () => {
-                try {
-                    if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-                        await signInWithCustomToken(auth, window.__initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (err) {
-                    console.error("Erro na autenticação:", err);
-                }
-            };
-            initAuth();
+body{
+  background:var(--bg);
+  color:var(--txt);
+  font-family:'Syne',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+  overflow-x:hidden;
+  min-height:100svh;
+}
 
-            onAuthStateChanged(auth, (user) => {
-                if (user) startFirestoreListener();
-            });
-        };
+/* ── SPLASH ── */
+#splash{
+  position:fixed;inset:0;z-index:9999;
+  background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:32px;
+  transition:opacity 0.7s ease, visibility 0.7s ease;
+}
+#splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.splash-logo{max-width:220px;width:80%;
+  filter:drop-shadow(0 0 40px rgba(34,211,238,0.3));
+  animation:splashPulse 1.8s ease-in-out infinite alternate;
+}
+@keyframes splashPulse{
+  from{filter:drop-shadow(0 0 20px rgba(34,211,238,0.2))}
+  to{filter:drop-shadow(0 0 60px rgba(34,211,238,0.5))}
+}
+.splash-bar{width:120px;height:2px;background:rgba(34,211,238,0.15);border-radius:2px;overflow:hidden}
+.splash-bar-fill{height:100%;background:var(--c);border-radius:2px;animation:fillBar 1.8s ease forwards}
+@keyframes fillBar{from{width:0}to{width:100%}}
+.splash-label{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.6em;color:rgba(34,211,238,0.4);text-transform:uppercase}
 
-        function startFirestoreListener() {
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'services');
-            onSnapshot(q, (snapshot) => {
-                services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderServiceMenu();
-            }, (error) => {
-                console.error("Erro no Firestore:", error);
-            });
-        }
+/* ── NOISE ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity:0.022;pointer-events:none;z-index:1000;
+}
 
-        function renderServiceMenu() {
-            const container = document.getElementById('services-list');
-            if (!container) return;
-            if (services.length === 0) {
-                container.innerHTML = '<p class="text-gray-600 text-[10px] uppercase font-bold tracking-widest text-center py-4">Consulte preços via WhatsApp</p>';
-                return;
-            }
-            container.innerHTML = services.map(s => `
-                <div class="flex justify-between items-center p-5 bg-white/5 border border-white/5 rounded-2xl mb-3 hover:bg-white/10 transition-all group active:scale-[0.98]">
-                    <span class="text-xs font-bold text-white uppercase tracking-tight group-hover:text-cyan-400 transition-colors">${s.name}</span>
-                    <span class="text-cyan-400 font-black text-[10px] uppercase tracking-tighter border border-cyan-400/20 px-3 py-1.5 rounded-lg bg-cyan-400/5">Consultar</span>
-                </div>
-            `).join('');
-        }
+/* ── BG ORBS ── */
+.bg-field{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(110px);animation:drift 20s ease-in-out infinite alternate}
+.o1{width:500px;height:500px;background:radial-gradient(circle,#0e7490,transparent 70%);top:-200px;left:-150px;opacity:.12;animation-delay:0s}
+.o2{width:350px;height:350px;background:radial-gradient(circle,#06b6d4,transparent 70%);bottom:10%;right:-100px;opacity:.07;animation-delay:-8s}
+.o3{width:200px;height:200px;background:radial-gradient(circle,#22d3ee,transparent 70%);top:45%;left:55%;opacity:.05;animation-delay:-15s}
+@keyframes drift{
+  0%{transform:translate(0,0) scale(1)}
+  50%{transform:translate(30px,-20px) scale(1.04)}
+  100%{transform:translate(-20px,15px) scale(0.96)}
+}
 
-        window.openSheet = (id) => {
-            const sheet = document.getElementById(id);
-            if (sheet) {
-                sheet.classList.remove('translate-y-full');
-                document.body.classList.add('overflow-hidden');
-                lucide.createIcons();
-            }
-        };
+/* ── PARTICLES ── */
+#particles{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
+.particle{
+  position:absolute;border-radius:50%;
+  background:var(--c);
+  animation:floatUp linear infinite;
+  pointer-events:none;
+}
+@keyframes floatUp{
+  0%{transform:translateY(100vh) scale(0);opacity:0}
+  10%{opacity:1}
+  90%{opacity:0.3}
+  100%{transform:translateY(-10vh) scale(1);opacity:0}
+}
 
-        window.closeSheet = (id) => {
-            const sheet = document.getElementById(id);
-            if (sheet) {
-                sheet.classList.add('translate-y-full');
-                document.body.classList.remove('overflow-hidden');
-                if (id === 'sheet-camera') stopCamera();
-            }
-        };
+/* ── SCANLINE ── */
+.scanline{position:fixed;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.3),transparent);animation:scan 8s linear infinite;pointer-events:none;z-index:999}
+@keyframes scan{0%{top:-1px;opacity:0}5%{opacity:1}95%{opacity:.2}100%{top:100vh;opacity:0}}
 
-        // --- GESTÃO DA CÂMARA ---
+/* ── MAIN ── */
+main{position:relative;z-index:10;max-width:420px;margin:0 auto;padding:0 18px 100px;display:flex;flex-direction:column;align-items:center}
 
-        window.startCamera = async () => {
-            // Abre a sheet primeiro para feedback visual
-            openSheet('sheet-camera');
-            const video = document.getElementById('camera-preview');
-            
-            try {
-                // Tenta aceder à câmara traseira apenas quando solicitado
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }, 
-                    audio: false 
-                });
-                video.srcObject = stream;
-                video.play();
-            } catch (err) {
-                console.error("Erro na câmara:", err);
-                showToast("Não foi possível aceder à câmara.");
-                closeSheet('sheet-camera');
-            }
-        };
+/* ── HEADER ── */
+header{width:100%;display:flex;flex-direction:column;align-items:center;padding-top:60px;animation:fadeD .9s cubic-bezier(.16,1,.3,1) both}
+@keyframes fadeD{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
 
-        function stopCamera() {
-            if (stream) {
-                const tracks = stream.getTracks();
-                tracks.forEach(track => {
-                    track.stop();
-                });
-                const video = document.getElementById('camera-preview');
-                if (video) video.srcObject = null;
-                stream = null;
-            }
-        }
+/* AVATAR */
+.avatar-ring{
+  width:88px;height:88px;border-radius:50%;
+  border:2px solid rgba(34,211,238,0.5);
+  padding:3px;
+  box-shadow:0 0 0 4px rgba(34,211,238,0.08), 0 0 30px rgba(34,211,238,0.15);
+  animation:ringPulse 3s ease-in-out infinite;
+  margin-bottom:16px;
+}
+@keyframes ringPulse{
+  0%,100%{box-shadow:0 0 0 4px rgba(34,211,238,0.08),0 0 20px rgba(34,211,238,0.1)}
+  50%{box-shadow:0 0 0 8px rgba(34,211,238,0.04),0 0 40px rgba(34,211,238,0.25)}
+}
+.avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;background:#0a1a1c}
+.avatar-badge{
+  position:relative;display:inline-block;
+  width:14px;height:14px;border-radius:50%;
+  background:#22c55e;
+  border:2px solid #000;
+  margin-left:-20px;margin-top:-20px;
+  box-shadow:0 0 8px rgba(34,197,94,0.6);
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.5}}
 
-        window.processDiagnostic = async () => {
-            const video = document.getElementById('camera-preview');
-            if (!video || !stream) return;
+.logo-wrap{width:100%;max-width:290px;position:relative}
+.logo-wrap::after{content:'';position:absolute;bottom:-18px;left:15%;right:15%;height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,0.35),transparent)}
+.logo-img{width:100%;height:auto;display:block;filter:drop-shadow(0 0 28px rgba(34,211,238,0.18))}
 
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-            
-            const base64Image = canvas.toDataURL('image/png').split(',')[1];
-            
-            // Para a câmara imediatamente após capturar
-            stopCamera();
-            closeSheet('sheet-camera');
-            
-            document.getElementById('ai-loading').classList.remove('hidden');
-            
-            try {
-                const diagnosis = await callGeminiAI(base64Image);
-                displayDiagnosis(diagnosis);
-            } catch (err) {
-                showToast("Erro na análise. Tente novamente.");
-            } finally {
-                document.getElementById('ai-loading').classList.add('hidden');
-            }
-        };
+.badge-row{display:flex;align-items:center;gap:10px;margin-top:28px}
+.badge-line{width:28px;height:1px;background:linear-gradient(90deg,transparent,var(--c));opacity:.4}
+.badge-line.r{transform:scaleX(-1)}
+.badge-txt{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.5em;color:rgba(34,211,238,.55);text-transform:uppercase;font-weight:700}
 
-        async function callGeminiAI(base64Data, retryCount = 0) {
-            const prompt = "Analise o nível de sujidade do carro nesta foto e recomende: Simples (sujeira leve), Completa (sujeira média) ou Detalhada (sujeira pesada). Resposta em português, curta e vendedora.";
-            
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/png", data: base64Data } }] }]
-                    })
-                });
+.loc-tag{margin-top:12px;font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.55em;color:rgba(148,163,184,.22);text-transform:uppercase}
 
-                if (!response.ok) throw new Error("Erro na API Gemini");
-                const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text || "Lava Jato DZ7 pronto para cuidar do seu carro!";
-            } catch (err) {
-                if (retryCount < 3) {
-                    await new Promise(r => setTimeout(r, 1000));
-                    return callGeminiAI(base64Data, retryCount + 1);
-                }
-                throw err;
-            }
-        }
+/* ── COUNTER ── */
+.counter-strip{
+  width:100%;margin:28px 0 0;
+  display:flex;justify-content:center;gap:0;
+  border:1px solid rgba(34,211,238,0.1);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(6,14,16,0.7);
+  backdrop-filter:blur(12px);
+  animation:fadeD .7s .2s cubic-bezier(.16,1,.3,1) both;
+}
+.counter-item{flex:1;padding:16px 10px;text-align:center;position:relative}
+.counter-item+.counter-item::before{content:'';position:absolute;left:0;top:20%;height:60%;width:1px;background:rgba(34,211,238,0.1)}
+.counter-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--c);letter-spacing:.03em;line-height:1}
+.counter-lbl{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-top:4px}
 
-        function displayDiagnosis(text) {
-            const resultText = document.getElementById('diagnosis-result-text');
-            if (resultText) {
-                resultText.innerText = text;
-                openSheet('sheet-diagnosis-result');
-            }
-        }
+/* ── DIVIDER ── */
+.divider{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin:36px 0}
+.ddot{width:3px;height:3px;border-radius:50%;background:rgba(34,211,238,.2)}
+.ddot.b{width:5px;height:5px;background:var(--c);box-shadow:0 0 12px var(--c),0 0 24px rgba(34,211,238,.4);animation:pdot 2.5s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.75)}}
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            if (toast) {
-                toast.innerText = msg;
-                toast.classList.remove('translate-y-20', 'opacity-0');
-                setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
-            }
-        }
+/* ── STATUS BADGE ── */
+.status-bar{
+  width:100%;margin-bottom:16px;
+  padding:12px 20px;border-radius:14px;
+  border:1px solid rgba(34,211,238,0.12);
+  background:rgba(6,14,16,0.7);
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(10px);
+  animation:fadeU .5s .1s both;
+}
+.status-left{display:flex;align-items:center;gap:10px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.7);animation:blink 2s infinite}
+.status-dot.closed{background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,0.7)}
+.status-label{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.08em}
+.status-sub{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:2px;letter-spacing:.05em}
+.status-vagas{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--c);letter-spacing:.03em;text-align:right;line-height:1}
+.status-vagas small{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);display:block;letter-spacing:.1em}
 
-    </script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
-        
-        body { 
-            background-color: #000; 
-            color: #f3f4f6; 
-            font-family: 'Inter', sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-        
-        /* Estilização dos Botões */
-        .bio-link {
-            @apply w-full py-6 rounded-2xl border border-white/10 bg-white/5 text-center font-bold text-sm uppercase tracking-widest transition-all relative flex items-center justify-center gap-4;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
+/* ── LINKS ── */
+.links-grid{width:100%;display:flex;flex-direction:column;gap:11px}
 
-        .bio-link:active { transform: scale(0.96); filter: brightness(1.2); }
-        
-        .bio-link-primary {
-            @apply bg-gradient-to-r from-cyan-500 to-blue-600 text-black border-none font-black shadow-[0_10px_40px_-10px_rgba(6,182,212,0.4)];
-        }
+.link-item{animation:fadeU .6s cubic-bezier(.16,1,.3,1) both}
+@keyframes fadeU{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.link-item:nth-child(1){animation-delay:.1s}
+.link-item:nth-child(2){animation-delay:.17s}
+.link-item:nth-child(3){animation-delay:.24s}
+.link-item:nth-child(4){animation-delay:.31s}
+.link-item:nth-child(5){animation-delay:.38s}
+.link-item:nth-child(6){animation-delay:.45s}
+.link-item:nth-child(7){animation-delay:.52s}
 
-        .bio-link-ai {
-            @apply bg-black border-2 border-cyan-500/40 text-white;
-            box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
-        }
+.lbtn{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:16px 20px;border-radius:18px;
+  text-decoration:none;cursor:pointer;
+  background:var(--surf);
+  border:1px solid var(--c3);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  transition:all .22s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 4px 20px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.03);
+  position:relative;overflow:hidden;
+  font-family:'Syne',sans-serif;text-align:left;
+  color:var(--txt);
+}
+.lbtn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(34,211,238,.06),transparent 60%);opacity:0;transition:opacity .3s}
+.lbtn:active{transform:scale(.97) translateY(1px);border-color:var(--c);box-shadow:0 0 18px rgba(34,211,238,.12)}
+.lbtn:active::before{opacity:1}
+.lbtn.feat{border-color:rgba(34,211,238,.45);background:linear-gradient(135deg,rgba(7,24,28,.97),rgba(1,10,13,.99))}
+.lbtn.feat .lbl{color:var(--c)}
 
-        /* Sheets de Transição */
-        .sheet {
-            @apply fixed inset-0 z-[100] bg-black translate-y-full transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col pt-safe;
-        }
+.lft{display:flex;align-items:center;gap:13px}
+.lic{
+  width:40px;height:40px;border-radius:12px;
+  background:var(--c2);border:1px solid var(--c3);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.lic svg{width:17px;height:17px;stroke:var(--c);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lbl{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.lsub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:2px;letter-spacing:.04em}
+.larr{width:28px;height:28px;border-radius:50%;border:1px solid rgba(34,211,238,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.larr svg{width:13px;height:13px;stroke:rgba(34,211,238,.5);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
-        /* Banner sem bordas e com transição suave */
-        .banner-mask {
-            mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to bottom, black 75%, transparent 100%);
-        }
+/* copy phone button */
+.copy-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(34,211,238,.08);
+  border:1px solid rgba(34,211,238,.18);
+  border-radius:8px;padding:4px 10px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:9px;color:var(--c);
+  letter-spacing:.05em;transition:all .2s;
+}
+.copy-btn:active{transform:scale(.95)}
+.copy-feedback{font-family:'Space Mono',monospace;font-size:9px;color:#22c55e;letter-spacing:.1em;margin-top:4px;height:12px;transition:opacity .3s}
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        #camera-preview {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #000;
-        }
-    </style>
+/* ── SECTION TITLE ── */
+.sec-title{width:100%;margin:48px 0 20px;text-align:center}
+.sec-title h3{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#fff;letter-spacing:.04em;line-height:1}
+.sec-title h3 span{color:var(--c)}
+.sec-title p{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.2em;margin-top:8px;text-transform:uppercase}
+.acc-bar{width:44px;height:3px;background:var(--c);border-radius:2px;margin:10px auto 0;box-shadow:0 0 14px rgba(34,211,238,.5)}
+
+/* ── BEFORE/AFTER GALLERY ── */
+.gallery-wrap{width:100%;overflow:hidden;border-radius:22px;position:relative}
+.gallery-track{display:flex;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+.gallery-slide{min-width:100%;position:relative;border-radius:22px;overflow:hidden;aspect-ratio:16/10}
+.slide-before,.slide-after{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:72px;letter-spacing:.04em;
+  background-size:cover;background-position:center;
+}
+.slide-before{background:linear-gradient(135deg,#0a0a0a,#1a1a1a);color:rgba(255,255,255,.06)}
+.slide-after{background:linear-gradient(135deg,#020d10,#04191e);color:rgba(34,211,238,.06)}
+.slide-label{
+  position:absolute;top:14px;left:14px;
+  font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.4em;
+  text-transform:uppercase;font-weight:700;
+  background:rgba(0,0,0,.6);border:1px solid rgba(34,211,238,.2);
+  backdrop-filter:blur(8px);padding:6px 12px;border-radius:100px;color:var(--c);
+}
+.slide-desc{
+  position:absolute;bottom:14px;left:14px;right:14px;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
+  color:#fff;letter-spacing:.04em;text-transform:uppercase;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  padding:10px 14px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.06);
+}
+.slide-desc span{color:var(--c);display:block;font-size:11px;font-family:'Space Mono',monospace;font-weight:400;letter-spacing:.08em;margin-top:2px}
+.gallery-dots{display:flex;justify-content:center;gap:6px;margin-top:14px}
+.gdot{width:6px;height:6px;border-radius:3px;background:rgba(34,211,238,.2);transition:all .3s;cursor:pointer}
+.gdot.a{width:22px;background:var(--c);box-shadow:0 0 8px rgba(34,211,238,.4)}
+.gallery-nav{display:flex;justify-content:space-between;margin-top:10px;gap:10px}
+.gnav{flex:1;padding:12px;border-radius:12px;border:1px solid rgba(34,211,238,.15);background:rgba(6,14,16,.8);
+  font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.gnav:active{border-color:var(--c);color:var(--c)}
+.gnav svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── TESTIMONIALS ── */
+.testi-track-wrap{width:100%;overflow:hidden}
+.testi-track{display:flex;gap:12px;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+.testi-card{
+  min-width:calc(100% - 40px);
+  background:rgba(6,14,16,.9);
+  border:1px solid rgba(34,211,238,.1);
+  border-radius:20px;padding:24px;
+  flex-shrink:0;
+}
+.testi-stars{display:flex;gap:3px;margin-bottom:12px}
+.tstar{width:13px;height:13px;fill:var(--c);stroke:none}
+.testi-text{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:#fff;line-height:1.6;letter-spacing:.01em}
+.testi-author{display:flex;align-items:center;gap:10px;margin-top:16px}
+.testi-avatar{width:36px;height:36px;border-radius:50%;background:var(--c2);border:1px solid var(--c3);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--c);overflow:hidden}
+.testi-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.testi-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.06em}
+.testi-car{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:1px;letter-spacing:.05em}
+.testi-dots{display:flex;justify-content:center;gap:6px;margin-top:14px}
+
+/* ── SCHEDULE ── */
+.hours-card{
+  width:100%;background:rgba(6,14,16,.9);
+  border:1px solid rgba(34,211,238,.1);border-radius:22px;overflow:hidden;
+}
+.hours-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(34,211,238,.05)}
+.hours-row:last-child{border-bottom:none}
+.hours-row.today{background:rgba(34,211,238,.04);border-left:2px solid var(--c)}
+.hours-day{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:.06em}
+.hours-day.today-txt{color:var(--c)}
+.hours-time{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.05em}
+.hours-time.today-txt{color:rgba(34,211,238,.7)}
+.hours-closed{font-family:'Space Mono',monospace;font-size:9px;color:rgba(239,68,68,.5);letter-spacing:.1em;text-transform:uppercase}
+
+/* ── CALCULATOR ── */
+.calc-card{
+  width:100%;background:rgba(6,14,16,.95);
+  border:1px solid rgba(34,211,238,.15);border-radius:24px;
+  padding:28px 22px;
+}
+.calc-section-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.35em;color:rgba(34,211,238,.5);text-transform:uppercase;margin-bottom:10px}
+.calc-options{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.calc-opt{
+  padding:9px 16px;border-radius:100px;
+  border:1px solid rgba(34,211,238,.15);
+  background:transparent;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+  color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+  transition:all .2s;
+}
+.calc-opt.sel{
+  border-color:var(--c);color:var(--c);
+  background:rgba(34,211,238,.08);
+  box-shadow:0 0 12px rgba(34,211,238,.1);
+}
+.calc-result{
+  margin-top:8px;padding:20px;border-radius:16px;
+  background:rgba(34,211,238,.04);
+  border:1px solid rgba(34,211,238,.12);
+  text-align:center;
+  min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.calc-price{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--c);letter-spacing:.03em;line-height:1}
+.calc-price-lbl{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-top:4px}
+.calc-empty{font-family:'Space Mono',monospace;font-size:10px;color:rgba(34,211,238,.2);letter-spacing:.2em;text-transform:uppercase}
+
+/* ── CTA CARD ── */
+.cta-card{
+  width:100%;margin-top:44px;border-radius:26px;
+  border:1px solid rgba(34,211,238,.12);
+  background:linear-gradient(160deg,rgba(4,16,18,.98),rgba(0,0,0,.99));
+  padding:38px 28px;text-align:center;position:relative;overflow:hidden;
+  animation:fadeU .6s .7s both;
+}
+.cta-card::before{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(34,211,238,.4),transparent)}
+.cta-eyebrow{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.45em;color:rgba(34,211,238,.45);text-transform:uppercase;margin-bottom:14px}
+.cta-title{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:.04em;color:#fff;line-height:1.05}
+.cta-title span{color:var(--c)}
+.cta-sub{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.12em;margin-top:10px;text-transform:uppercase}
+.cta-btn{
+  display:inline-flex;align-items:center;gap:9px;
+  margin-top:24px;padding:15px 26px;border-radius:100px;
+  background:var(--c);color:#000;
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+  letter-spacing:.2em;text-transform:uppercase;text-decoration:none;
+  transition:all .2s;box-shadow:0 0 28px rgba(34,211,238,.3);
+}
+.cta-btn:active{transform:scale(.95);box-shadow:0 0 10px rgba(34,211,238,.1)}
+.cta-btn svg{width:15px;height:15px;fill:none;stroke:#000;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── FOOTER ── */
+.foot{margin-top:56px;text-align:center;padding-bottom:36px}
+.foot-div{width:40px;height:1px;background:rgba(34,211,238,.1);margin:0 auto 18px}
+.foot-txt{font-family:'Space Mono',monospace;font-size:8px;color:rgba(100,116,139,.28);letter-spacing:.3em;line-height:2.2;text-transform:uppercase}
+
+/* admin trigger button (footer) */
+.admin-trigger{
+  margin-top:14px;background:transparent;border:none;
+  font-family:'Space Mono',monospace;font-size:8px;
+  color:rgba(100,116,139,.18);letter-spacing:.3em;
+  text-transform:uppercase;cursor:pointer;
+  padding:6px 10px;
+}
+.admin-trigger:hover{color:rgba(34,211,238,.4)}
+
+/* ── SHEETS ── */
+.sheet{
+  position:fixed;inset:0;z-index:200;
+  background:#020c0e;
+  transform:translateY(100%);
+  transition:transform .48s cubic-bezier(.32,.72,0,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sheet.open{transform:translateY(0)}
+.sheet-hdr{
+  padding:26px 20px 18px;
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid rgba(34,211,238,.07);flex-shrink:0;
+}
+.sh-close{
+  background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.14);
+  border-radius:50%;width:42px;height:42px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;
+}
+.sh-close:active{transform:scale(.9)}
+.sh-close svg{width:19px;height:19px;stroke:var(--c);fill:none;stroke-width:2;stroke-linecap:round}
+.sh-tag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.4em;color:rgba(34,211,238,.45);text-transform:uppercase}
+.sheet-body{flex:1;overflow-y:auto;padding:28px 18px;-webkit-overflow-scrolling:touch}
+.sheet-body::-webkit-scrollbar{display:none}
+
+/* SERVICE CARDS */
+.svc-card{
+  background:rgba(8,18,20,.9);border:1px solid rgba(34,211,238,.1);
+  border-radius:18px;padding:18px;margin-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  transition:border-color .2s;
+}
+.svc-card:active{border-color:rgba(34,211,238,.35)}
+.svc-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.05em}
+.svc-desc{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.03em}
+.svc-price{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--c);letter-spacing:.03em;line-height:1;text-align:right}
+.svc-price small{font-family:'Space Mono',monospace;font-size:8px;color:rgba(34,211,238,.45);display:block;letter-spacing:.1em}
+
+/* BOOKING FORM */
+.form-group{margin-bottom:16px}
+.form-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.35em;color:rgba(34,211,238,.5);text-transform:uppercase;margin-bottom:8px;display:block}
+.form-input{
+  width:100%;background:rgba(8,18,20,.9);border:1px solid rgba(34,211,238,.15);
+  border-radius:14px;padding:14px 18px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:#fff;
+  outline:none;-webkit-appearance:none;transition:border-color .2s;
+}
+.form-input:focus{border-color:rgba(34,211,238,.4)}
+.form-select{
+  width:100%;background:rgba(8,18,20,.9);border:1px solid rgba(34,211,238,.15);
+  border-radius:14px;padding:14px 18px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:#fff;
+  outline:none;-webkit-appearance:none;cursor:pointer;transition:border-color .2s;
+}
+.form-select:focus{border-color:rgba(34,211,238,.4)}
+.form-select option{background:#020c0e;color:#fff}
+.submit-btn{
+  width:100%;padding:17px;border-radius:14px;margin-top:8px;
+  background:var(--c);color:#000;
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:800;
+  letter-spacing:.2em;text-transform:uppercase;cursor:pointer;
+  border:none;transition:all .2s;box-shadow:0 0 24px rgba(34,211,238,.25);
+}
+.submit-btn:active{transform:scale(.97)}
+
+/* ── SECTION ANIMATIONS ── */
+.appear{opacity:0;transform:translateY(24px);transition:opacity .6s ease, transform .6s ease}
+.appear.visible{opacity:1;transform:translateY(0)}
+
+/* ═══════════════════════════════════════════════════ */
+/* ── ADMIN PANEL STYLES ──                            */
+/* ═══════════════════════════════════════════════════ */
+#admin-login,#admin-panel{
+  position:fixed;inset:0;z-index:9000;
+  background:#000;
+  display:none;flex-direction:column;
+  overflow-y:auto;
+}
+#admin-login.show,#admin-panel.show{display:flex}
+
+.admin-login-box{
+  margin:auto;width:90%;max-width:380px;
+  background:rgba(6,14,16,.95);
+  border:1px solid rgba(34,211,238,.2);
+  border-radius:22px;padding:36px 28px;
+  text-align:center;
+}
+.admin-login-box h2{
+  font-family:'Bebas Neue',sans-serif;font-size:32px;
+  color:#fff;letter-spacing:.05em;margin-bottom:8px;
+}
+.admin-login-box h2 span{color:var(--c)}
+.admin-login-box p{
+  font-family:'Space Mono',monospace;font-size:9px;
+  color:var(--muted);letter-spacing:.25em;text-transform:uppercase;margin-bottom:24px;
+}
+#admin-pwd{
+  width:100%;padding:16px;text-align:center;
+  background:rgba(0,0,0,.6);border:1px solid rgba(34,211,238,.2);
+  border-radius:14px;color:#fff;
+  font-family:'Space Mono',monospace;font-size:18px;
+  letter-spacing:.5em;outline:none;
+}
+#admin-pwd:focus{border-color:var(--c)}
+.admin-err{color:#ef4444;font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:.15em;margin-top:10px;text-transform:uppercase;height:14px}
+
+.admin-header{
+  position:sticky;top:0;z-index:10;
+  background:rgba(2,12,14,.96);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(34,211,238,.1);
+  padding:18px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.admin-header h1{
+  font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;letter-spacing:.04em;
+}
+.admin-header h1 span{color:var(--c)}
+.admin-logout{
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  border-radius:10px;padding:8px 14px;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:9px;color:#ef4444;
+  letter-spacing:.2em;text-transform:uppercase;
+}
+
+.admin-tabs{
+  display:flex;overflow-x:auto;
+  background:rgba(6,14,16,.7);
+  border-bottom:1px solid rgba(34,211,238,.08);
+  position:sticky;top:62px;z-index:9;
+}
+.admin-tabs::-webkit-scrollbar{display:none}
+.admin-tab{
+  flex-shrink:0;padding:14px 18px;
+  background:transparent;border:none;cursor:pointer;
+  font-family:'Space Mono',monospace;font-size:9px;
+  color:var(--muted);letter-spacing:.18em;text-transform:uppercase;
+  border-bottom:2px solid transparent;
+}
+.admin-tab.active{color:var(--c);border-bottom-color:var(--c)}
+
+.admin-content{
+  flex:1;padding:24px 18px 100px;
+  max-width:600px;margin:0 auto;width:100%;
+}
+.admin-section{display:none}
+.admin-section.active{display:block}
+.admin-section h3{
+  font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;
+  letter-spacing:.04em;margin-bottom:6px;
+}
+.admin-section .desc{
+  font-family:'Space Mono',monospace;font-size:9px;
+  color:var(--muted);letter-spacing:.2em;
+  text-transform:uppercase;margin-bottom:20px;
+}
+
+.admin-field{margin-bottom:14px}
+.admin-field label{
+  display:block;font-family:'Space Mono',monospace;font-size:9px;
+  color:rgba(34,211,238,.6);letter-spacing:.25em;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.admin-field input,
+.admin-field textarea,
+.admin-field select{
+  width:100%;padding:12px 14px;
+  background:rgba(8,18,20,.9);
+  border:1px solid rgba(34,211,238,.15);
+  border-radius:10px;color:#fff;
+  font-family:'Syne',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;
+}
+.admin-field input:focus,
+.admin-field textarea:focus,
+.admin-field select:focus{border-color:var(--c)}
+.admin-field textarea{min-height:80px;resize:vertical;font-family:'Syne',sans-serif}
+
+.admin-card{
+  background:rgba(8,18,20,.7);
+  border:1px solid rgba(34,211,238,.1);
+  border-radius:14px;padding:18px;margin-bottom:14px;
+}
+.admin-card-hdr{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;
+}
+.admin-card-title{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
+  color:#fff;text-transform:uppercase;letter-spacing:.06em;
+}
+
+.admin-btn{
+  padding:10px 16px;border-radius:10px;
+  background:var(--c);color:#000;border:none;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+  letter-spacing:.15em;text-transform:uppercase;
+  transition:transform .2s;
+}
+.admin-btn:active{transform:scale(.97)}
+.admin-btn.danger{background:#ef4444;color:#fff}
+.admin-btn.ghost{background:transparent;color:var(--c);border:1px solid var(--c3)}
+.admin-btn.full{width:100%;padding:14px;margin-top:8px}
+
+.admin-row-actions{display:flex;gap:6px}
+.admin-icon-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.admin-icon-btn.del{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
+.admin-icon-btn svg{width:14px;height:14px;stroke:var(--c);fill:none;stroke-width:2}
+.admin-icon-btn.del svg{stroke:#ef4444}
+
+.admin-fb-status{
+  margin:14px 0;padding:10px 14px;border-radius:10px;
+  font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;
+}
+.admin-fb-status.ok{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);color:#22c55e}
+.admin-fb-status.err{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#ef4444}
+.admin-fb-status.warn{background:rgba(234,179,8,.08);border:1px solid rgba(234,179,8,.3);color:#eab308}
+
+.admin-img-preview{
+  width:100%;max-height:160px;object-fit:cover;
+  border-radius:10px;margin-top:8px;
+  border:1px solid rgba(34,211,238,.15);
+}
+
+.admin-toast{
+  position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:rgba(34,211,238,.95);color:#000;
+  padding:12px 22px;border-radius:100px;
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+  letter-spacing:.15em;text-transform:uppercase;
+  z-index:9999;transition:transform .35s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 10px 30px rgba(34,211,238,.3);
+}
+.admin-toast.show{transform:translateX(-50%) translateY(0)}
+.admin-toast.err{background:#ef4444;color:#fff}
+</style>
 </head>
-<body class="selection:bg-cyan-500/30 overflow-x-hidden bg-black">
+<body>
 
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 z-[2000] bg-red-600 text-white px-8 py-4 rounded-full text-xs font-black uppercase transition-all duration-500 translate-y-20 opacity-0 shadow-2xl"></div>
+<!-- SPLASH -->
+<div id="splash">
+  <img src="https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC" class="splash-logo" alt="DZ7" id="splash-img">
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+  <p class="splash-label">Carregando...</p>
+</div>
 
-    <main class="min-h-screen flex flex-col items-center pb-24 max-w-md mx-auto">
-        
-        <!-- Secção do Banner Premium -->
-        <div class="w-full relative mb-12">
-            <div class="w-full aspect-[16/9] sm:aspect-[21/9] bg-black overflow-hidden banner-mask">
-                <img src="https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC" 
-                     class="w-full h-full object-contain block mx-auto" 
-                     alt="DZ7 Banner"
-                     onerror="this.style.display='none'">
-            </div>
-            
-            <!-- Perfil / Nome -->
-            <div class="px-6 -mt-8 text-center relative z-10">
-                <div class="inline-block px-5 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 mb-8 backdrop-blur-md">
-                    <span class="text-[10px] font-black text-cyan-400 uppercase tracking-[0.6em]">Premium Detailing</span>
-                </div>
-                <h1 class="text-5xl font-black italic tracking-tighter text-white uppercase leading-none">DZ7 <span class="text-cyan-400">LAVA JATO</span></h1>
-                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-[0.5em] mt-8 opacity-60 italic tracking-tighter">Grajaú • Maranhão</p>
-            </div>
-        </div>
+<!-- BG -->
+<div class="bg-field">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+</div>
+<div class="scanline"></div>
+<div id="particles"></div>
 
-        <!-- Botões de Acção -->
-        <div class="w-full px-8 space-y-6">
-            
-            <button onclick="startCamera()" class="bio-link bio-link-ai py-7">
-                <div class="relative">
-                    <i data-lucide="sparkles" class="w-6 h-6 text-cyan-400"></i>
-                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping"></span>
-                </div>
-                Diagnóstico por IA ✨
-            </button>
+<main>
 
-            <a href="https://wa.me/5599900000000" target="_blank" class="bio-link bio-link-primary py-7">
-                <i data-lucide="message-circle" class="w-7 h-7"></i> Orçamento WhatsApp
-            </a>
-
-            <button onclick="openSheet('sheet-services')" class="bio-link py-7">
-                <i data-lucide="list-checks" class="w-6 h-6 text-gray-400"></i> Nossos Serviços
-            </button>
-
-            <a href="https://maps.google.com" target="_blank" class="bio-link py-7">
-                <i data-lucide="map-pin" class="w-6 h-6 text-gray-400"></i> Ver Localização
-            </a>
-
-            <!-- Rodapé Social -->
-            <div class="pt-24 flex flex-col items-center gap-12">
-                <div class="flex gap-12 text-gray-500">
-                    <a href="https://instagram.com/dz7_lavajato" target="_blank" class="hover:text-cyan-400 transition-all active:scale-90 p-3 bg-white/5 rounded-full"><i data-lucide="instagram" class="w-7 h-7"></i></a>
-                    <a href="#" class="hover:text-cyan-400 transition-all active:scale-90 p-3 bg-white/5 rounded-full"><i data-lucide="facebook" class="w-7 h-7"></i></a>
-                    <a href="#" class="hover:text-cyan-400 transition-all active:scale-90 p-3 bg-white/5 rounded-full"><i data-lucide="phone" class="w-7 h-7"></i></a>
-                </div>
-                
-                <div class="text-center space-y-2 pb-12">
-                    <div class="w-12 h-1 bg-cyan-500/20 mx-auto rounded-full"></div>
-                    <p class="text-[10px] font-black text-gray-800 uppercase tracking-[0.8em]">Elite Detailing</p>
-                    <p class="text-[8px] font-bold text-gray-900 uppercase tracking-widest opacity-20">© 2024 DZ7 Estética Automotiva</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- SHEET: SERVIÇOS -->
-    <div id="sheet-services" class="sheet">
-        <header class="p-8 flex justify-between items-center border-b border-white/5 bg-black">
-            <button onclick="closeSheet('sheet-services')" class="text-gray-500 hover:text-white transition-all active:scale-75">
-                <i data-lucide="chevron-down" class="w-10 h-10"></i>
-            </button>
-            <span class="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400 italic">Menu de Soluções</span>
-            <div class="w-10"></div>
-        </header>
-        
-        <div class="flex-1 overflow-y-auto p-12 bg-black no-scrollbar text-center">
-            <div class="mb-14">
-                <h2 class="text-5xl font-black uppercase text-white tracking-tighter leading-tight italic uppercase">O MELHOR <br><span class="text-cyan-400 block mt-2">CUIDADO</span></h2>
-                <div class="h-1.5 w-16 bg-cyan-500 mx-auto mt-6 rounded-full"></div>
-            </div>
-            
-            <div id="services-list" class="space-y-4">
-                <div class="animate-pulse space-y-4">
-                    <div class="h-24 bg-white/5 rounded-3xl w-full border border-white/5"></div>
-                    <div class="h-24 bg-white/5 rounded-3xl w-full border border-white/5"></div>
-                </div>
-            </div>
-            
-            <div class="mt-20 p-12 bg-gradient-to-br from-cyan-500/5 to-blue-600/5 border border-cyan-500/10 rounded-[3.5rem] shadow-inner">
-                <p class="text-[12px] font-black text-cyan-400 uppercase tracking-[0.3em] mb-8 leading-relaxed">
-                    Dúvida sobre o serviço ideal?<br>
-                    <span class="text-white opacity-60 uppercase">Peça uma consultoria técnica.</span>
-                </p>
-                <a href="https://wa.me/5599900000000" class="bio-link bio-link-primary py-6 text-sm">
-                    <i data-lucide="message-square" class="w-6 h-6"></i> Chamar Consultor
-                </a>
-            </div>
-            <div class="h-32"></div>
-        </div>
+  <!-- HEADER -->
+  <header>
+    <div style="position:relative;display:inline-block;margin-bottom:4px">
+      <div class="avatar-ring">
+        <img src="https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC" class="avatar-img" alt="DZ7" id="avatar-img">
+      </div>
+      <span class="avatar-badge"></span>
     </div>
 
-    <!-- SHEET: CAMERA (IA) -->
-    <div id="sheet-camera" class="sheet">
-        <div class="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
-            <video id="camera-preview" autoplay playsinline muted class="w-full h-full object-cover opacity-60"></video>
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none p-12">
-                <div class="w-full aspect-square border-2 border-cyan-500/40 rounded-[4rem] relative shadow-[0_0_150px_rgba(6,182,212,0.3)]">
-                    <div class="absolute -top-16 left-0 right-0 text-center">
-                        <span class="text-cyan-400 text-[12px] font-black uppercase tracking-[0.5em] bg-black/60 px-6 py-3 rounded-full border border-cyan-500/20 shadow-2xl">Enquadre o Carro</span>
-                    </div>
-                </div>
+    <!-- ⚠️ BANNER FIXO NO CÓDIGO (não vem do Firebase) -->
+    <div class="logo-wrap">
+      <img src="https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC" class="logo-img" alt="DZ7 Premium Detailing" id="banner-img">
+    </div>
+
+    <div class="badge-row">
+      <div class="badge-line"></div>
+      <span class="badge-txt" id="badge-txt">Premium Detailing</span>
+      <div class="badge-line r"></div>
+    </div>
+    <p class="loc-tag" id="loc-tag">Grajaú · Maranhão</p>
+
+    <!-- COUNTER -->
+    <div class="counter-strip">
+      <div class="counter-item">
+        <div class="counter-num" id="counter-1" data-target="1247">0</div>
+        <div class="counter-lbl" id="counter-1-lbl">Carros</div>
+      </div>
+      <div class="counter-item">
+        <div class="counter-num" id="counter-2" data-target="98">0</div>
+        <div class="counter-lbl" id="counter-2-lbl">% Satisf.</div>
+      </div>
+      <div class="counter-item">
+        <div class="counter-num" id="counter-3" data-target="5">0</div>
+        <div class="counter-lbl" id="counter-3-lbl">Anos</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- DIVIDER -->
+  <div class="divider">
+    <div class="ddot" style="opacity:.15"></div><div class="ddot" style="opacity:.3"></div>
+    <div class="ddot b"></div>
+    <div class="ddot" style="opacity:.3"></div><div class="ddot" style="opacity:.15"></div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar appear" id="status-bar">
+    <div class="status-left">
+      <div class="status-dot" id="status-dot"></div>
+      <div>
+        <div class="status-label" id="status-label">Aberto agora</div>
+        <div class="status-sub" id="status-sub">Fecha às 18:00</div>
+      </div>
+    </div>
+    <div>
+      <div class="status-vagas"><span id="vagas-num">5</span> <span style="font-size:14px">vagas</span>
+        <small>disponíveis hoje</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINKS -->
+  <div class="links-grid" id="links-grid">
+    <!-- preenchido dinamicamente via JS -->
+  </div>
+
+  <!-- GALLERY -->
+  <div class="sec-title appear">
+    <h3>ANTES E <span>DEPOIS</span></h3>
+    <p>Transformações reais</p>
+    <div class="acc-bar"></div>
+  </div>
+
+  <div class="appear" style="width:100%">
+    <div class="gallery-wrap">
+      <div class="gallery-track" id="gallery-track">
+        <!-- preenchido dinamicamente -->
+      </div>
+    </div>
+    <div class="gallery-dots" id="gallery-dots"></div>
+    <div class="gallery-nav">
+      <button class="gnav" onclick="prevSlide()"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg> Anterior</button>
+      <button class="gnav" onclick="nextSlide()">Próximo <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </div>
+
+  <!-- TESTIMONIALS -->
+  <div class="sec-title appear">
+    <h3>O QUE DIZEM <span>NOSSOS</span> CLIENTES</h3>
+    <p>Avaliações verificadas</p>
+    <div class="acc-bar"></div>
+  </div>
+
+  <div class="appear" style="width:100%">
+    <div class="testi-track-wrap">
+      <div class="testi-track" id="testi-track">
+        <!-- preenchido dinamicamente -->
+      </div>
+    </div>
+    <div class="testi-dots" id="testi-dots"></div>
+  </div>
+
+  <!-- HORÁRIO -->
+  <div class="sec-title appear">
+    <h3>HORÁRIO DE <span>FUNCIONAMENTO</span></h3>
+    <p>Planeje sua visita</p>
+    <div class="acc-bar"></div>
+  </div>
+
+  <div class="hours-card appear" id="hours-card"></div>
+
+  <!-- CALCULADORA -->
+  <div class="sec-title appear">
+    <h3>CALCULE SEU <span>ORÇAMENTO</span></h3>
+    <p>Estimativa instantânea</p>
+    <div class="acc-bar"></div>
+  </div>
+
+  <div class="calc-card appear">
+    <p class="calc-section-label">Tipo de veículo</p>
+    <div class="calc-options" id="calc-vehicle"></div>
+
+    <p class="calc-section-label">Serviço desejado</p>
+    <div class="calc-options" id="calc-service"></div>
+
+    <div class="calc-result" id="calc-result">
+      <p class="calc-empty">Selecione veículo e serviço</p>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-card">
+    <p class="cta-eyebrow" id="cta-eyebrow">Especialista disponível</p>
+    <h4 class="cta-title" id="cta-title">QUAL O <span>SERVIÇO</span><br>IDEAL PARA<br>VOCÊ?</h4>
+    <p class="cta-sub" id="cta-sub">Tire todas as suas dúvidas</p>
+    <a href="#" class="cta-btn" id="cta-btn">
+      <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      Chamar no WhatsApp
+    </a>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="foot">
+    <div class="foot-div"></div>
+    <p class="foot-txt" id="foot-txt">Todos os direitos reservados<br>DZ7 Lava-Jato © 2025–2026<br>Criado por Grafic Pages Incompany</p>
+    <button class="admin-trigger" onclick="openAdminLogin()">⚙ Painel Admin</button>
+  </div>
+
+</main>
+
+<!-- SHEET: SERVIÇOS -->
+<div id="sheet-services" class="sheet">
+  <div class="sheet-hdr">
+    <button class="sh-close" onclick="closeSheet('sheet-services')">
+      <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <span class="sh-tag">Serviços DZ7</span>
+    <div style="width:42px"></div>
+  </div>
+  <div class="sheet-body">
+    <div style="text-align:center;margin-bottom:32px">
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:44px;color:#fff;letter-spacing:.04em;line-height:1">NOSSAS <span style="color:var(--c)">SOLUÇÕES</span></h2>
+      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.2em;margin-top:10px;text-transform:uppercase">Tabela de preços</p>
+      <div class="acc-bar"></div>
+    </div>
+    <div id="sheet-services-list"></div>
+    <a href="#" id="sheet-services-wa" style="display:block;margin-top:24px;text-decoration:none">
+      <button class="submit-btn">Agendar via WhatsApp</button>
+    </a>
+  </div>
+</div>
+
+<!-- SHEET: AGENDAMENTO -->
+<div id="sheet-booking" class="sheet">
+  <div class="sheet-hdr">
+    <button class="sh-close" onclick="closeSheet('sheet-booking')">
+      <svg viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></svg>
+    </button>
+    <span class="sh-tag">Agendar Visita</span>
+    <div style="width:42px"></div>
+  </div>
+  <div class="sheet-body">
+    <div style="text-align:center;margin-bottom:32px">
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:44px;color:#fff;letter-spacing:.04em;line-height:1">RESERVAR <span style="color:var(--c)">HORÁRIO</span></h2>
+      <p style="font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.2em;margin-top:10px;text-transform:uppercase">Preencha e enviaremos pelo WhatsApp</p>
+      <div class="acc-bar"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Seu nome</label>
+      <input type="text" class="form-input" id="bk-name" placeholder="Ex: João Silva">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Veículo</label>
+      <input type="text" class="form-input" id="bk-car" placeholder="Ex: Honda Civic 2020">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Serviço</label>
+      <select class="form-select" id="bk-service">
+        <option value="">Selecione um serviço</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Data preferida</label>
+      <input type="date" class="form-input" id="bk-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações (opcional)</label>
+      <input type="text" class="form-input" id="bk-obs" placeholder="Ex: Carro com muita sujeira">
+    </div>
+
+    <button class="submit-btn" onclick="sendBooking()">
+      Enviar pelo WhatsApp
+    </button>
+
+    <p style="font-family:'Space Mono',monospace;font-size:8px;color:rgba(148,163,184,0.3);letter-spacing:.1em;text-align:center;margin-top:16px;text-transform:uppercase">Você será redirecionado ao WhatsApp</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- ── ADMIN LOGIN ──                                  -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="admin-login">
+  <div class="admin-login-box">
+    <h2>PAINEL <span>ADMIN</span></h2>
+    <p>Acesso restrito</p>
+    <input type="password" id="admin-pwd" placeholder="••••••" maxlength="20" autocomplete="off">
+    <p class="admin-err" id="admin-err"></p>
+    <button class="admin-btn full" style="margin-top:14px" onclick="adminLogin()">Entrar</button>
+    <button class="admin-btn ghost full" style="margin-top:8px" onclick="closeAdminLogin()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- ── ADMIN PANEL ──                                  -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div id="admin-panel">
+  <div class="admin-header">
+    <h1>DZ7 <span>ADMIN</span></h1>
+    <button class="admin-logout" onclick="adminLogout()">Sair</button>
+  </div>
+
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="general">Geral</button>
+    <button class="admin-tab" data-tab="links">Links</button>
+    <button class="admin-tab" data-tab="numbers">Números</button>
+    <button class="admin-tab" data-tab="profile">Perfil</button>
+    <button class="admin-tab" data-tab="hours">Horários</button>
+    <button class="admin-tab" data-tab="services">Serviços</button>
+    <button class="admin-tab" data-tab="prices">Preços</button>
+    <button class="admin-tab" data-tab="gallery">Galeria</button>
+    <button class="admin-tab" data-tab="testimonials">Depoimentos</button>
+    <button class="admin-tab" data-tab="cta">CTA</button>
+  </div>
+
+  <div class="admin-content">
+    <div id="admin-fb-status" class="admin-fb-status warn">⚠ Verificando conexão Firebase...</div>
+
+    <!-- ABA: GERAL -->
+    <div class="admin-section active" data-section="general">
+      <h3>Configurações Gerais</h3>
+      <p class="desc">Identidade e textos básicos</p>
+
+      <div class="admin-field">
+        <label>Título da página (browser)</label>
+        <input id="cfg-title" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Texto do badge (header)</label>
+        <input id="cfg-badge" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Localização (header)</label>
+        <input id="cfg-loc" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Texto do rodapé (use \n para nova linha)</label>
+        <textarea id="cfg-foot"></textarea>
+      </div>
+
+      <button class="admin-btn full" onclick="saveSection('general')">Salvar Geral</button>
+    </div>
+
+    <!-- ABA: LINKS -->
+    <div class="admin-section" data-section="links">
+      <h3>Links de Botões</h3>
+      <p class="desc">Botões da página inicial</p>
+      <div id="admin-links-list"></div>
+      <button class="admin-btn ghost full" onclick="addLink()">+ Adicionar Link</button>
+      <button class="admin-btn full" onclick="saveSection('links')">Salvar Links</button>
+    </div>
+
+    <!-- ABA: NÚMEROS -->
+    <div class="admin-section" data-section="numbers">
+      <h3>Números & Contatos</h3>
+      <p class="desc">WhatsApp, telefone e contadores</p>
+
+      <div class="admin-field">
+        <label>WhatsApp (formato: 5599999999999)</label>
+        <input id="cfg-whatsapp" type="text">
+      </div>
+      <div class="admin-field">
+        <label>WhatsApp formatado (exibição)</label>
+        <input id="cfg-whatsapp-display" type="text" placeholder="+55 99 90000-0000">
+      </div>
+      <div class="admin-field">
+        <label>Vagas disponíveis hoje</label>
+        <input id="cfg-vagas" type="number">
+      </div>
+
+      <h3 style="margin-top:24px">Contadores (header)</h3>
+      <div class="admin-field">
+        <label>Contador 1 — Valor</label>
+        <input id="cfg-counter-1" type="number">
+      </div>
+      <div class="admin-field">
+        <label>Contador 1 — Rótulo</label>
+        <input id="cfg-counter-1-lbl" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Contador 2 — Valor</label>
+        <input id="cfg-counter-2" type="number">
+      </div>
+      <div class="admin-field">
+        <label>Contador 2 — Rótulo</label>
+        <input id="cfg-counter-2-lbl" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Contador 3 — Valor</label>
+        <input id="cfg-counter-3" type="number">
+      </div>
+      <div class="admin-field">
+        <label>Contador 3 — Rótulo</label>
+        <input id="cfg-counter-3-lbl" type="text">
+      </div>
+
+      <button class="admin-btn full" onclick="saveSection('numbers')">Salvar Números</button>
+    </div>
+
+    <!-- ABA: PERFIL / FOTOS -->
+    <div class="admin-section" data-section="profile">
+      <h3>Perfil & Fotos</h3>
+      <p class="desc">Avatar e splash (banner permanece no código)</p>
+
+      <div class="admin-field">
+        <label>URL do Avatar (foto de perfil)</label>
+        <input id="cfg-avatar" type="text" placeholder="https://...">
+        <img id="cfg-avatar-preview" class="admin-img-preview" style="display:none">
+      </div>
+      <div class="admin-field">
+        <label>URL da Logo do Splash (loading)</label>
+        <input id="cfg-splash" type="text" placeholder="https://...">
+        <img id="cfg-splash-preview" class="admin-img-preview" style="display:none">
+      </div>
+
+      <div class="admin-fb-status warn" style="margin-top:20px">
+        ⚠ Lembrete: a imagem do <b>BANNER PRINCIPAL</b> está fixa no código.<br>
+        Procure por <code style="color:var(--c)">id="banner-img"</code> no HTML para alterá-la.
+      </div>
+
+      <button class="admin-btn full" onclick="saveSection('profile')">Salvar Perfil</button>
+    </div>
+
+    <!-- ABA: HORÁRIOS -->
+    <div class="admin-section" data-section="hours">
+      <h3>Horários de Funcionamento</h3>
+      <p class="desc">Configure cada dia da semana</p>
+      <div id="admin-hours-list"></div>
+      <button class="admin-btn full" onclick="saveSection('hours')">Salvar Horários</button>
+    </div>
+
+    <!-- ABA: SERVIÇOS -->
+    <div class="admin-section" data-section="services">
+      <h3>Lista de Serviços</h3>
+      <p class="desc">Aparecem em "Ver tabela de preços"</p>
+      <div id="admin-services-list"></div>
+      <button class="admin-btn ghost full" onclick="addService()">+ Adicionar Serviço</button>
+      <button class="admin-btn full" onclick="saveSection('services')">Salvar Serviços</button>
+    </div>
+
+    <!-- ABA: PREÇOS / CALCULADORA -->
+    <div class="admin-section" data-section="prices">
+      <h3>Calculadora de Orçamento</h3>
+      <p class="desc">Tipos de veículo e tabela de preços</p>
+
+      <div class="admin-field">
+        <label>Tipos de veículo (separados por vírgula)</label>
+        <input id="cfg-vehicles" type="text" placeholder="Hatch,Sedan,SUV,Pickup">
+      </div>
+
+      <h3 style="margin-top:20px">Preços por Serviço × Veículo</h3>
+      <p class="desc">Edite os preços abaixo</p>
+      <div id="admin-prices-list"></div>
+
+      <button class="admin-btn full" onclick="saveSection('prices')">Salvar Preços</button>
+    </div>
+
+    <!-- ABA: GALERIA -->
+    <div class="admin-section" data-section="gallery">
+      <h3>Galeria Antes & Depois</h3>
+      <p class="desc">Cartões "antes/depois"</p>
+      <div id="admin-gallery-list"></div>
+      <button class="admin-btn ghost full" onclick="addGallery()">+ Adicionar Cartão</button>
+      <button class="admin-btn full" onclick="saveSection('gallery')">Salvar Galeria</button>
+    </div>
+
+    <!-- ABA: DEPOIMENTOS -->
+    <div class="admin-section" data-section="testimonials">
+      <h3>Depoimentos de Clientes</h3>
+      <p class="desc">Avaliações exibidas no carrossel</p>
+      <div id="admin-testi-list"></div>
+      <button class="admin-btn ghost full" onclick="addTesti()">+ Adicionar Depoimento</button>
+      <button class="admin-btn full" onclick="saveSection('testimonials')">Salvar Depoimentos</button>
+    </div>
+
+    <!-- ABA: CTA -->
+    <div class="admin-section" data-section="cta">
+      <h3>Card CTA Final</h3>
+      <p class="desc">Bloco "QUAL O SERVIÇO IDEAL?"</p>
+
+      <div class="admin-field">
+        <label>Eyebrow (linha superior)</label>
+        <input id="cfg-cta-eyebrow" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Título (use &lt;br&gt; para quebra)</label>
+        <textarea id="cfg-cta-title"></textarea>
+      </div>
+      <div class="admin-field">
+        <label>Subtítulo</label>
+        <input id="cfg-cta-sub" type="text">
+      </div>
+      <div class="admin-field">
+        <label>Texto do botão</label>
+        <input id="cfg-cta-btn" type="text">
+      </div>
+
+      <button class="admin-btn full" onclick="saveSection('cta')">Salvar CTA</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="admin-toast" id="admin-toast">Salvo com sucesso</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!--   FIREBASE SDK (compat - facilita integração)       -->
+<!-- ═══════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════ */
+/*                                                                     */
+/*  ⚠️  ⚠️  ⚠️   COLE AQUI AS CREDENCIAIS DO FIREBASE   ⚠️  ⚠️  ⚠️       */
+/*                                                                     */
+/*  Procure por: FIREBASE_CONFIG                                       */
+/*  Substitua os valores abaixo pelos do seu projeto Firebase.         */
+/*  Obtenha em: console.firebase.google.com → Configurações → Geral    */
+/*                                                                     */
+/* ═══════════════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey: "COLE_AQUI_SUA_API_KEY",
+  authDomain: "COLE_AQUI.firebaseapp.com",
+  projectId: "COLE_AQUI_SEU_PROJECT_ID",
+  storageBucket: "COLE_AQUI.appspot.com",
+  messagingSenderId: "COLE_AQUI",
+  appId: "COLE_AQUI"
+};
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  CONFIGURAÇÕES PADRÃO (usadas se Firebase não estiver configurado)  */
+/*  Estas configs também são gravadas no Firebase no primeiro acesso.  */
+/* ═══════════════════════════════════════════════════════════════════ */
+const DEFAULT_CONFIG = {
+  general: {
+    title: "DZ7 | Premium Detailing",
+    badge: "Premium Detailing",
+    location: "Grajaú · Maranhão",
+    footer: "Todos os direitos reservados\nDZ7 Lava-Jato © 2025–2026\nCriado por Grafic Pages Incompany"
+  },
+  numbers: {
+    whatsapp: "5599900000000",
+    whatsappDisplay: "+55 99 90000-0000",
+    vagas: 5,
+    counters: [
+      { value: 1247, label: "Carros" },
+      { value: 98, label: "% Satisf." },
+      { value: 5, label: "Anos" }
+    ]
+  },
+  profile: {
+    avatar: "https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC",
+    splash: "https://lh3.googleusercontent.com/d/14_QawOvGQXVj5e5bpbSHyN2veiMAqJeC"
+  },
+  links: [
+    { type:"instagram", label:"Instagram", sub:"@dz7_lavajato", url:"https://instagram.com/dz7_lavajato" },
+    { type:"facebook",  label:"Facebook",  sub:"Página oficial", url:"https://facebook.com/dz7" },
+    { type:"whatsapp",  label:"WhatsApp",  sub:"+55 99 90000-0000", url:"https://wa.me/5599900000000" },
+    { type:"location",  label:"Localização", sub:"Como chegar", url:"https://maps.google.com" },
+    { type:"services",  label:"Serviços",  sub:"Ver tabela de preços", url:"#sheet-services" },
+    { type:"booking",   label:"Agendar",   sub:"Reservar horário", url:"#sheet-booking" },
+    { type:"feedback",  label:"Feedback",  sub:"Avalie nosso serviço", url:"#" }
+  ],
+  hours: [
+    { name:"Segunda", hours:"08:00 – 18:00", open:8, close:18, closed:false },
+    { name:"Terça",   hours:"08:00 – 18:00", open:8, close:18, closed:false },
+    { name:"Quarta",  hours:"08:00 – 18:00", open:8, close:18, closed:false },
+    { name:"Quinta",  hours:"08:00 – 18:00", open:8, close:18, closed:false },
+    { name:"Sexta",   hours:"08:00 – 18:00", open:8, close:18, closed:false },
+    { name:"Sábado",  hours:"08:00 – 17:00", open:8, close:17, closed:false },
+    { name:"Domingo", hours:"08:00 – 14:00", open:8, close:14, closed:false }
+  ],
+  services: [
+    { name:"Lavagem Simples",   desc:"Ducha + secagem rápida", price:"R$50",  unit:"por veículo" },
+    { name:"Lavagem Completa",  desc:"Interna + externa + aspiração", price:"R$90",  unit:"por veículo" },
+    { name:"Polimento",         desc:"Remoção de riscos e oxidação", price:"R$250", unit:"a partir de" },
+    { name:"Cristalização",     desc:"Proteção de vidros e lataria", price:"R$180", unit:"por serviço" },
+    { name:"Detailing Premium", desc:"Pacote completo VIP",      price:"R$450", unit:"pacote completo" },
+    { name:"Higienização",      desc:"Ozônio + bactericida interno", price:"R$120", unit:"por veículo" }
+  ],
+  prices: {
+    vehicles: ["Hatch","Sedan","SUV","Pickup"],
+    table: {
+      "Lavagem Simples":   {Hatch:50,  Sedan:55,  SUV:65,  Pickup:60},
+      "Lavagem Completa":  {Hatch:90,  Sedan:100, SUV:120, Pickup:110},
+      "Polimento":         {Hatch:250, Sedan:280, SUV:350, Pickup:320},
+      "Cristalização":     {Hatch:180, Sedan:200, SUV:250, Pickup:230},
+      "Detailing Premium": {Hatch:450, Sedan:500, SUV:620, Pickup:580},
+      "Higienização":      {Hatch:120, Sedan:130, SUV:160, Pickup:145}
+    }
+  },
+  gallery: [
+    { label:"Polimento",        title:"Honda Civic 2019 — Oxidação severa", subtitle:"Resultado: 8h de trabalho", before:"", after:"" },
+    { label:"Cristalização",    title:"Toyota Corolla 2021 — Vidros opacos", subtitle:"Resultado: visibilidade total", before:"", after:"" },
+    { label:"Detailing Premium",title:"Jeep Compass 2022 — Detailing completo", subtitle:"Resultado: aparência de zero km", before:"", after:"" }
+  ],
+  testimonials: [
+    { stars:5, text:"Trouxe meu Civic com riscos profundos e saiu como saiu da concessionária. Trabalho impecável, valeu cada centavo!", name:"Rafael Costa", car:"Honda Civic 2019 · Polimento", initials:"RC", avatar:"" },
+    { stars:5, text:"Atendimento rápido, profissionalismo total. Fiz a higienização e o cheiro de novo durou semanas. Recomendo demais!", name:"Ana Mello", car:"Hyundai HB20 2022 · Higienização", initials:"AM", avatar:"" },
+    { stars:5, text:"O pacote premium do Jeep ficou absurdo de bonito. Parece que saiu da fábrica. Ja indiquei pra todo mundo.", name:"Marcos Silva", car:"Jeep Compass 2022 · Detailing Premium", initials:"MS", avatar:"" }
+  ],
+  cta: {
+    eyebrow: "Especialista disponível",
+    title: "QUAL O <span>SERVIÇO</span><br>IDEAL PARA<br>VOCÊ?",
+    sub: "Tire todas as suas dúvidas",
+    btn: "Chamar no WhatsApp"
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  ADMIN PASSWORD (padrão 000000)                                     */
+/* ═══════════════════════════════════════════════════════════════════ */
+const ADMIN_PASSWORD = "000000";
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  FIREBASE INIT                                                      */
+/* ═══════════════════════════════════════════════════════════════════ */
+let db = null;
+let firebaseReady = false;
+const CONFIG_DOC = "main"; // documento único: collection "siteConfig" / doc "main"
+const COLLECTION = "siteConfig";
+
+let APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); // clone
+
+function initFirebase(){
+  try{
+    if(FIREBASE_CONFIG.apiKey.startsWith("COLE_AQUI")){
+      console.warn("[Firebase] Credenciais não configuradas. Usando configuração local.");
+      return false;
+    }
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    firebaseReady = true;
+    console.log("[Firebase] Inicializado com sucesso");
+    return true;
+  }catch(e){
+    console.error("[Firebase] Erro:", e);
+    return false;
+  }
+}
+
+async function loadConfigFromFirebase(){
+  if(!firebaseReady) return false;
+  try{
+    const doc = await db.collection(COLLECTION).doc(CONFIG_DOC).get();
+    if(doc.exists){
+      const data = doc.data();
+      APP_CONFIG = Object.assign({}, DEFAULT_CONFIG, data);
+      // garante chaves
+      Object.keys(DEFAULT_CONFIG).forEach(k=>{
+        if(!APP_CONFIG[k]) APP_CONFIG[k] = DEFAULT_CONFIG[k];
+      });
+      console.log("[Firebase] Config carregada");
+      return true;
+    } else {
+      // primeiro acesso: salva padrão
+      await db.collection(COLLECTION).doc(CONFIG_DOC).set(DEFAULT_CONFIG);
+      console.log("[Firebase] Config padrão criada");
+      return true;
+    }
+  }catch(e){
+    console.error("[Firebase] Erro ao carregar:", e);
+    return false;
+  }
+}
+
+async function saveConfigToFirebase(){
+  if(!firebaseReady){
+    showToast("Firebase não configurado — alterações apenas locais","err");
+    return false;
+  }
+  try{
+    await db.collection(COLLECTION).doc(CONFIG_DOC).set(APP_CONFIG);
+    return true;
+  }catch(e){
+    console.error("[Firebase] Erro ao salvar:", e);
+    showToast("Erro ao salvar: "+e.message,"err");
+    return false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  RENDER FRONTEND (aplica APP_CONFIG na tela)                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+function renderAll(){
+  // GENERAL
+  document.title = APP_CONFIG.general.title;
+  document.getElementById('badge-txt').textContent = APP_CONFIG.general.badge;
+  document.getElementById('loc-tag').textContent = APP_CONFIG.general.location;
+  document.getElementById('foot-txt').innerHTML = APP_CONFIG.general.footer.replace(/\n/g,'<br>');
+
+  // PROFILE
+  const av = APP_CONFIG.profile.avatar;
+  document.getElementById('avatar-img').src = av;
+  document.getElementById('splash-img').src = APP_CONFIG.profile.splash;
+
+  // NUMBERS / COUNTERS
+  document.getElementById('vagas-num').textContent = APP_CONFIG.numbers.vagas;
+  for(let i=0;i<3;i++){
+    const c = APP_CONFIG.numbers.counters[i];
+    if(c){
+      document.getElementById('counter-'+(i+1)).dataset.target = c.value;
+      document.getElementById('counter-'+(i+1)+'-lbl').textContent = c.label;
+    }
+  }
+
+  // LINKS
+  renderLinks();
+
+  // GALLERY
+  renderGallery();
+
+  // TESTIMONIALS
+  renderTestimonials();
+
+  // HOURS
+  renderHours();
+
+  // CALCULATOR
+  renderCalculator();
+
+  // SERVICES SHEET
+  renderServicesSheet();
+
+  // BOOKING SELECT
+  renderBookingSelect();
+
+  // CTA
+  document.getElementById('cta-eyebrow').textContent = APP_CONFIG.cta.eyebrow;
+  document.getElementById('cta-title').innerHTML = APP_CONFIG.cta.title;
+  document.getElementById('cta-sub').textContent = APP_CONFIG.cta.sub;
+  document.getElementById('cta-btn').href = "https://wa.me/"+APP_CONFIG.numbers.whatsapp;
+  // mantém o ícone svg + texto
+  const ctaBtn = document.getElementById('cta-btn');
+  ctaBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${APP_CONFIG.cta.btn}`;
+
+  // SHEET SERVICES WHATSAPP
+  document.getElementById('sheet-services-wa').href = "https://wa.me/"+APP_CONFIG.numbers.whatsapp;
+
+  // STATUS BAR
+  renderStatusBar();
+
+  // animate counters
+  document.querySelectorAll('[data-target]').forEach(el=>{
+    el.textContent = '0';
+    animateCounter(el, parseInt(el.dataset.target));
+  });
+}
+
+/* ── LINK ICONS ── */
+const LINK_ICONS = {
+  instagram: '<svg viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="var(--c)" stroke="none"/></svg>',
+  facebook:  '<svg viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+  whatsapp:  '<svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  location:  '<svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  services:  '<svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  booking:   '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  feedback:  '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  link:      '<svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+};
+
+function renderLinks(){
+  const grid = document.getElementById('links-grid');
+  grid.innerHTML = APP_CONFIG.links.map((l,i)=>{
+    const icon = LINK_ICONS[l.type] || LINK_ICONS.link;
+    if(l.type==='whatsapp'){
+      return `
+      <div class="link-item">
+        <div class="lbtn feat" style="cursor:default">
+          <div class="lft">
+            <div class="lic" style="border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.09)">${icon}</div>
+            <div>
+              <div class="lbl">${l.label}</div>
+              <div class="lsub">${l.sub}</div>
+              <button class="copy-btn" onclick="copyPhone(event)">
+                <svg viewBox="0 0 24 24" style="width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copiar número
+              </button>
+              <div class="copy-feedback" id="copy-feedback" style="opacity:0">✓ Copiado!</div>
             </div>
+          </div>
+          <a href="${l.url}" target="_blank" class="larr" style="text-decoration:none;border-color:rgba(34,211,238,.35)">
+            <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
         </div>
-        <div class="p-20 flex justify-around bg-black border-t border-white/5">
-            <button onclick="closeSheet('sheet-camera')" class="text-gray-600 hover:text-white transition-all active:scale-75"><i data-lucide="x-circle" class="w-12 h-12"></i></button>
-            <button onclick="processDiagnostic()" class="w-28 h-28 bg-white rounded-full border-[12px] border-gray-900 active:scale-90 transition-transform shadow-[0_0_60px_rgba(255,255,255,0.3)] flex items-center justify-center">
-                <div class="w-20 h-20 rounded-full border-4 border-gray-100"></div>
-            </button>
-            <div class="w-12"></div>
+      </div>`;
+    }
+    if(l.type==='services' || l.type==='booking'){
+      const sheetId = l.type==='services'?'sheet-services':'sheet-booking';
+      return `
+      <div class="link-item">
+        <button onclick="openSheet('${sheetId}')" class="lbtn">
+          <div class="lft">
+            <div class="lic">${icon}</div>
+            <div><div class="lbl">${l.label}</div><div class="lsub">${l.sub}</div></div>
+          </div>
+          <div class="larr"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </button>
+      </div>`;
+    }
+    return `
+    <div class="link-item">
+      <a href="${l.url}" target="_blank" class="lbtn">
+        <div class="lft">
+          <div class="lic">${icon}</div>
+          <div><div class="lbl">${l.label}</div><div class="lsub">${l.sub}</div></div>
         </div>
-    </div>
+        <div class="larr"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </a>
+    </div>`;
+  }).join('');
+}
 
-    <!-- SHEET: RESULTADO DIAGNÓSTICO -->
-    <div id="sheet-diagnosis-result" class="sheet">
-        <header class="p-8 flex justify-between items-center border-b border-white/5 bg-black">
-            <button onclick="closeSheet('sheet-diagnosis-result')" class="text-gray-500"><i data-lucide="x" class="w-10 h-10"></i></button>
-            <span class="text-[10px] font-black uppercase tracking-[0.5em] text-cyan-400 italic">Diagnóstico Gemini ✨</span>
-            <div class="w-10"></div>
-        </header>
-        <div class="flex-1 p-14 flex flex-col items-center justify-center text-center">
-            <div class="relative mb-12">
-                <div class="w-28 h-28 bg-cyan-500/10 rounded-full flex items-center justify-center border border-cyan-500/20">
-                    <i data-lucide="sparkles" class="w-14 h-14 text-cyan-400"></i>
-                </div>
-                <div class="absolute inset-0 w-28 h-28 border-2 border-cyan-400 rounded-full animate-ping opacity-10"></div>
-            </div>
-            <h3 class="text-4xl font-black uppercase text-white mb-8 italic leading-tight uppercase underline decoration-cyan-500/20 underline-offset-8">ANÁLISE <br><span class="text-cyan-400">FINALIZADA</span></h3>
-            <p id="diagnosis-result-text" class="text-gray-400 text-lg leading-relaxed mb-16 italic max-w-xs"></p>
-            <a href="https://wa.me/5599900000000" class="bio-link bio-link-primary w-full py-7 text-base">
-                <i data-lucide="calendar-check" class="w-7 h-7"></i> Agendar Lavagem
-            </a>
-            <button onclick="closeSheet('sheet-diagnosis-result')" class="mt-10 text-[12px] font-black uppercase text-gray-700 tracking-[0.5em] hover:text-gray-400 transition-colors">Voltar ao Início</button>
-        </div>
-    </div>
+function renderGallery(){
+  const t = document.getElementById('gallery-track');
+  const dots = document.getElementById('gallery-dots');
+  t.innerHTML = APP_CONFIG.gallery.map((g,i)=>{
+    const beforeStyle = g.before ? `background-image:url('${g.before}')` : '';
+    const afterStyle  = g.after  ? `background-image:url('${g.after}')`  : '';
+    return `
+      <div class="gallery-slide">
+        <div class="slide-before" style="${beforeStyle}">${g.before?'':'ANTES'}</div>
+        <div class="slide-after" style="clip-path:inset(0 ${30 + i*10}% 0 0);${afterStyle}">${g.after?'':'DEPOIS'}</div>
+        <div class="slide-label">${g.label}</div>
+        <div class="slide-desc">${g.title}<span>${g.subtitle}</span></div>
+      </div>`;
+  }).join('');
+  dots.innerHTML = APP_CONFIG.gallery.map((_,i)=>`<div class="gdot${i===0?' a':''}" onclick="goSlide(${i})"></div>`).join('');
+  gIdx = 0;
+}
 
-    <!-- AI LOADING -->
-    <div id="ai-loading" class="fixed inset-0 z-[2000] bg-black/98 hidden flex flex-col items-center justify-center gap-12">
-        <div class="relative">
-            <div class="w-24 h-24 border-2 border-cyan-500/10 rounded-full"></div>
-            <div class="absolute inset-0 w-24 h-24 border-t-4 border-cyan-500 rounded-full animate-spin"></div>
-            <i data-lucide="cpu" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-cyan-400 w-10 h-10 animate-pulse"></i>
+function renderTestimonials(){
+  const t = document.getElementById('testi-track');
+  const dots = document.getElementById('testi-dots');
+  t.innerHTML = APP_CONFIG.testimonials.map(tc=>{
+    const stars = Array.from({length:tc.stars||5},()=>`<svg class="tstar" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`).join('');
+    const av = tc.avatar ? `<img src="${tc.avatar}" alt="">` : (tc.initials||'??');
+    return `
+      <div class="testi-card">
+        <div class="testi-stars">${stars}</div>
+        <p class="testi-text">"${tc.text}"</p>
+        <div class="testi-author">
+          <div class="testi-avatar">${av}</div>
+          <div><div class="testi-name">${tc.name}</div><div class="testi-car">${tc.car}</div></div>
         </div>
-        <div class="text-center space-y-4">
-            <span class="text-[12px] font-black text-white uppercase tracking-[0.6em] block">Processando Diagnóstico ✨</span>
-            <span class="text-[10px] font-bold text-gray-700 uppercase tracking-widest block animate-pulse">O Gemini está a analisar o brilho do seu carro...</span>
-        </div>
-    </div>
+      </div>`;
+  }).join('');
+  dots.innerHTML = APP_CONFIG.testimonials.map((_,i)=>`<div class="gdot${i===0?' a':''}" onclick="goTesti(${i})"></div>`).join('');
+  tIdx = 0;
+}
 
+function renderHours(){
+  const todayIdx = (new Date().getDay()+6)%7;
+  const card = document.getElementById('hours-card');
+  card.innerHTML = APP_CONFIG.hours.map((d,i)=>`
+    <div class="hours-row${i===todayIdx?' today':''}">
+      <span class="hours-day${i===todayIdx?' today-txt':''}">${d.name}${i===todayIdx?' <span style="font-size:8px;font-family:Space Mono,monospace;color:rgba(34,211,238,.4);letter-spacing:.2em"> · HOJE</span>':''}</span>
+      <span class="${d.closed?'hours-closed':(i===todayIdx?'hours-time today-txt':'hours-time')}">${d.closed?'FECHADO':d.hours}</span>
+    </div>
+  `).join('');
+}
+
+function renderCalculator(){
+  const v = document.getElementById('calc-vehicle');
+  v.innerHTML = APP_CONFIG.prices.vehicles.map(veh=>
+    `<button class="calc-opt" onclick="selectCalc('vehicle',this,'${veh}')">${veh}</button>`
+  ).join('');
+  const s = document.getElementById('calc-service');
+  s.innerHTML = Object.keys(APP_CONFIG.prices.table).map(srv=>
+    `<button class="calc-opt" onclick="selectCalc('service',this,'${srv}')">${srv}</button>`
+  ).join('');
+  calcState.vehicle = null; calcState.service = null;
+  updateCalc();
+}
+
+function renderServicesSheet(){
+  const list = document.getElementById('sheet-services-list');
+  list.innerHTML = APP_CONFIG.services.map(s=>`
+    <div class="svc-card">
+      <div><div class="svc-name">${s.name}</div><div class="svc-desc">${s.desc}</div></div>
+      <div class="svc-price">${s.price}<small>${s.unit}</small></div>
+    </div>
+  `).join('');
+}
+
+function renderBookingSelect(){
+  const sel = document.getElementById('bk-service');
+  sel.innerHTML = `<option value="">Selecione um serviço</option>` +
+    APP_CONFIG.services.map(s=>`<option>${s.name} — ${s.price}</option>`).join('');
+}
+
+function renderStatusBar(){
+  const now = new Date();
+  const day = (now.getDay()+6)%7; // 0=Seg
+  const h = now.getHours();
+  const today = APP_CONFIG.hours[day];
+  if(!today){return}
+  const isOpen = !today.closed && h >= today.open && h < today.close;
+  const dot = document.getElementById('status-dot');
+  const lbl = document.getElementById('status-label');
+  const sub = document.getElementById('status-sub');
+  dot.classList.remove('closed');
+  if(!isOpen){
+    dot.classList.add('closed');
+    lbl.textContent = 'Fechado agora';
+    const next = APP_CONFIG.hours[(day+1)%7];
+    sub.textContent = `Abre amanhã às ${next.open}:00`;
+  } else {
+    lbl.textContent = 'Aberto agora';
+    sub.textContent = `Fecha às ${today.close}:00`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  ADMIN LOGIN                                                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+function openAdminLogin(){
+  document.getElementById('admin-login').classList.add('show');
+  document.getElementById('admin-pwd').value = '';
+  document.getElementById('admin-err').textContent = '';
+  setTimeout(()=>document.getElementById('admin-pwd').focus(),100);
+}
+function closeAdminLogin(){
+  document.getElementById('admin-login').classList.remove('show');
+}
+function adminLogin(){
+  const pwd = document.getElementById('admin-pwd').value;
+  if(pwd === ADMIN_PASSWORD){
+    document.getElementById('admin-login').classList.remove('show');
+    document.getElementById('admin-panel').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    populateAdminPanel();
+    updateFirebaseStatus();
+  } else {
+    document.getElementById('admin-err').textContent = '✗ Senha incorreta';
+    document.getElementById('admin-pwd').value = '';
+  }
+}
+function adminLogout(){
+  document.getElementById('admin-panel').classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter' && document.getElementById('admin-login').classList.contains('show')){
+    adminLogin();
+  }
+});
+
+function updateFirebaseStatus(){
+  const el = document.getElementById('admin-fb-status');
+  if(firebaseReady){
+    el.className = 'admin-fb-status ok';
+    el.innerHTML = '✓ Firebase conectado · Coleção: <code>'+COLLECTION+'</code> / Doc: <code>'+CONFIG_DOC+'</code>';
+  } else {
+    el.className = 'admin-fb-status warn';
+    el.innerHTML = '⚠ Firebase não configurado. Procure por <code style="color:var(--c)">FIREBASE_CONFIG</code> no código e cole as credenciais. As alterações serão temporárias até configurar.';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  ADMIN PANEL — TABS                                                 */
+/* ═══════════════════════════════════════════════════════════════════ */
+document.querySelectorAll('.admin-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.admin-section').forEach(s=>s.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelector(`.admin-section[data-section="${tab.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  ADMIN — POPULATE FIELDS                                            */
+/* ═══════════════════════════════════════════════════════════════════ */
+function populateAdminPanel(){
+  // GENERAL
+  document.getElementById('cfg-title').value = APP_CONFIG.general.title;
+  document.getElementById('cfg-badge').value = APP_CONFIG.general.badge;
+  document.getElementById('cfg-loc').value = APP_CONFIG.general.location;
+  document.getElementById('cfg-foot').value = APP_CONFIG.general.footer;
+
+  // NUMBERS
+  document.getElementById('cfg-whatsapp').value = APP_CONFIG.numbers.whatsapp;
+  document.getElementById('cfg-whatsapp-display').value = APP_CONFIG.numbers.whatsappDisplay;
+  document.getElementById('cfg-vagas').value = APP_CONFIG.numbers.vagas;
+  for(let i=0;i<3;i++){
+    document.getElementById('cfg-counter-'+(i+1)).value = APP_CONFIG.numbers.counters[i].value;
+    document.getElementById('cfg-counter-'+(i+1)+'-lbl').value = APP_CONFIG.numbers.counters[i].label;
+  }
+
+  // PROFILE
+  document.getElementById('cfg-avatar').value = APP_CONFIG.profile.avatar;
+  document.getElementById('cfg-splash').value = APP_CONFIG.profile.splash;
+  ['avatar','splash'].forEach(k=>{
+    const inp = document.getElementById('cfg-'+k);
+    const pv = document.getElementById('cfg-'+k+'-preview');
+    const upd=()=>{ if(inp.value){pv.src=inp.value;pv.style.display='block'}else{pv.style.display='none'} };
+    upd();
+    inp.oninput = upd;
+  });
+
+  // CTA
+  document.getElementById('cfg-cta-eyebrow').value = APP_CONFIG.cta.eyebrow;
+  document.getElementById('cfg-cta-title').value = APP_CONFIG.cta.title;
+  document.getElementById('cfg-cta-sub').value = APP_CONFIG.cta.sub;
+  document.getElementById('cfg-cta-btn').value = APP_CONFIG.cta.btn;
+
+  // VEHICLES
+  document.getElementById('cfg-vehicles').value = APP_CONFIG.prices.vehicles.join(',');
+
+  // LISTAS DINÂMICAS
+  renderAdminLinks();
+  renderAdminHours();
+  renderAdminServices();
+  renderAdminPrices();
+  renderAdminGallery();
+  renderAdminTesti();
+}
+
+function renderAdminLinks(){
+  const c = document.getElementById('admin-links-list');
+  const types = ['instagram','facebook','whatsapp','location','services','booking','feedback','link'];
+  c.innerHTML = APP_CONFIG.links.map((l,i)=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr">
+        <span class="admin-card-title">Link ${i+1}</span>
+        <button class="admin-icon-btn del" onclick="removeLink(${i})">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <div class="admin-field">
+        <label>Tipo / Ícone</label>
+        <select onchange="APP_CONFIG.links[${i}].type=this.value">
+          ${types.map(t=>`<option ${l.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="admin-field">
+        <label>Rótulo</label>
+        <input type="text" value="${l.label}" onchange="APP_CONFIG.links[${i}].label=this.value">
+      </div>
+      <div class="admin-field">
+        <label>Subtítulo</label>
+        <input type="text" value="${l.sub}" onchange="APP_CONFIG.links[${i}].sub=this.value">
+      </div>
+      <div class="admin-field">
+        <label>URL</label>
+        <input type="text" value="${l.url}" onchange="APP_CONFIG.links[${i}].url=this.value">
+      </div>
+    </div>
+  `).join('');
+}
+function addLink(){
+  APP_CONFIG.links.push({type:'link',label:'Novo Link',sub:'',url:'#'});
+  renderAdminLinks();
+}
+function removeLink(i){
+  APP_CONFIG.links.splice(i,1);
+  renderAdminLinks();
+}
+
+function renderAdminHours(){
+  const c = document.getElementById('admin-hours-list');
+  c.innerHTML = APP_CONFIG.hours.map((h,i)=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr">
+        <span class="admin-card-title">${h.name}</span>
+      </div>
+      <div class="admin-field">
+        <label>Texto exibido</label>
+        <input type="text" value="${h.hours}" onchange="APP_CONFIG.hours[${i}].hours=this.value">
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="admin-field" style="flex:1">
+          <label>Abre (h)</label>
+          <input type="number" min="0" max="23" value="${h.open}" onchange="APP_CONFIG.hours[${i}].open=parseInt(this.value)">
+        </div>
+        <div class="admin-field" style="flex:1">
+          <label>Fecha (h)</label>
+          <input type="number" min="0" max="23" value="${h.close}" onchange="APP_CONFIG.hours[${i}].close=parseInt(this.value)">
+        </div>
+      </div>
+      <div class="admin-field">
+        <label><input type="checkbox" ${h.closed?'checked':''} onchange="APP_CONFIG.hours[${i}].closed=this.checked"> Fechado neste dia</label>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAdminServices(){
+  const c = document.getElementById('admin-services-list');
+  c.innerHTML = APP_CONFIG.services.map((s,i)=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr">
+        <span class="admin-card-title">Serviço ${i+1}</span>
+        <button class="admin-icon-btn del" onclick="removeService(${i})">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <div class="admin-field"><label>Nome</label><input type="text" value="${s.name}" onchange="APP_CONFIG.services[${i}].name=this.value"></div>
+      <div class="admin-field"><label>Descrição</label><input type="text" value="${s.desc}" onchange="APP_CONFIG.services[${i}].desc=this.value"></div>
+      <div style="display:flex;gap:10px">
+        <div class="admin-field" style="flex:1"><label>Preço</label><input type="text" value="${s.price}" onchange="APP_CONFIG.services[${i}].price=this.value"></div>
+        <div class="admin-field" style="flex:1"><label>Unidade</label><input type="text" value="${s.unit}" onchange="APP_CONFIG.services[${i}].unit=this.value"></div>
+      </div>
+    </div>
+  `).join('');
+}
+function addService(){
+  APP_CONFIG.services.push({name:'Novo Serviço',desc:'',price:'R$0',unit:'por veículo'});
+  renderAdminServices();
+}
+function removeService(i){
+  APP_CONFIG.services.splice(i,1);
+  renderAdminServices();
+}
+
+function renderAdminPrices(){
+  const c = document.getElementById('admin-prices-list');
+  const vehicles = APP_CONFIG.prices.vehicles;
+  const services = Object.keys(APP_CONFIG.prices.table);
+  c.innerHTML = services.map(srv=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr"><span class="admin-card-title">${srv}</span></div>
+      ${vehicles.map(v=>{
+        const val = (APP_CONFIG.prices.table[srv] && APP_CONFIG.prices.table[srv][v]) || 0;
+        return `<div class="admin-field" style="display:flex;align-items:center;gap:10px">
+          <label style="flex:1;margin:0">${v}</label>
+          <input type="number" value="${val}" style="flex:1" onchange="setPriceVal('${srv}','${v}',this.value)">
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+function setPriceVal(srv,veh,val){
+  if(!APP_CONFIG.prices.table[srv]) APP_CONFIG.prices.table[srv]={};
+  APP_CONFIG.prices.table[srv][veh] = parseInt(val)||0;
+}
+
+function renderAdminGallery(){
+  const c = document.getElementById('admin-gallery-list');
+  c.innerHTML = APP_CONFIG.gallery.map((g,i)=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr">
+        <span class="admin-card-title">Cartão ${i+1}</span>
+        <button class="admin-icon-btn del" onclick="removeGallery(${i})">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <div class="admin-field"><label>Etiqueta (badge)</label><input type="text" value="${g.label}" onchange="APP_CONFIG.gallery[${i}].label=this.value"></div>
+      <div class="admin-field"><label>Título</label><input type="text" value="${g.title}" onchange="APP_CONFIG.gallery[${i}].title=this.value"></div>
+      <div class="admin-field"><label>Subtítulo</label><input type="text" value="${g.subtitle}" onchange="APP_CONFIG.gallery[${i}].subtitle=this.value"></div>
+      <div class="admin-field"><label>URL imagem ANTES</label><input type="text" value="${g.before||''}" placeholder="https://..." onchange="APP_CONFIG.gallery[${i}].before=this.value"></div>
+      <div class="admin-field"><label>URL imagem DEPOIS</label><input type="text" value="${g.after||''}" placeholder="https://..." onchange="APP_CONFIG.gallery[${i}].after=this.value"></div>
+    </div>
+  `).join('');
+}
+function addGallery(){
+  APP_CONFIG.gallery.push({label:'Novo',title:'Título',subtitle:'Sub',before:'',after:''});
+  renderAdminGallery();
+}
+function removeGallery(i){
+  APP_CONFIG.gallery.splice(i,1);
+  renderAdminGallery();
+}
+
+function renderAdminTesti(){
+  const c = document.getElementById('admin-testi-list');
+  c.innerHTML = APP_CONFIG.testimonials.map((t,i)=>`
+    <div class="admin-card">
+      <div class="admin-card-hdr">
+        <span class="admin-card-title">Depoimento ${i+1}</span>
+        <button class="admin-icon-btn del" onclick="removeTesti(${i})">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <div class="admin-field"><label>Estrelas (1-5)</label><input type="number" min="1" max="5" value="${t.stars||5}" onchange="APP_CONFIG.testimonials[${i}].stars=parseInt(this.value)"></div>
+      <div class="admin-field"><label>Texto do depoimento</label><textarea onchange="APP_CONFIG.testimonials[${i}].text=this.value">${t.text}</textarea></div>
+      <div class="admin-field"><label>Nome do cliente</label><input type="text" value="${t.name}" onchange="APP_CONFIG.testimonials[${i}].name=this.value"></div>
+      <div class="admin-field"><label>Carro / Serviço</label><input type="text" value="${t.car}" onchange="APP_CONFIG.testimonials[${i}].car=this.value"></div>
+      <div class="admin-field"><label>Iniciais (ex: RC)</label><input type="text" value="${t.initials||''}" onchange="APP_CONFIG.testimonials[${i}].initials=this.value"></div>
+      <div class="admin-field"><label>URL foto (opcional)</label><input type="text" value="${t.avatar||''}" onchange="APP_CONFIG.testimonials[${i}].avatar=this.value"></div>
+    </div>
+  `).join('');
+}
+function addTesti(){
+  APP_CONFIG.testimonials.push({stars:5,text:'Novo depoimento',name:'Nome',car:'Carro',initials:'XX',avatar:''});
+  renderAdminTesti();
+}
+function removeTesti(i){
+  APP_CONFIG.testimonials.splice(i,1);
+  renderAdminTesti();
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  ADMIN — SAVE                                                        */
+/* ═══════════════════════════════════════════════════════════════════ */
+async function saveSection(section){
+  switch(section){
+    case 'general':
+      APP_CONFIG.general.title = document.getElementById('cfg-title').value;
+      APP_CONFIG.general.badge = document.getElementById('cfg-badge').value;
+      APP_CONFIG.general.location = document.getElementById('cfg-loc').value;
+      APP_CONFIG.general.footer = document.getElementById('cfg-foot').value;
+      break;
+    case 'numbers':
+      APP_CONFIG.numbers.whatsapp = document.getElementById('cfg-whatsapp').value;
+      APP_CONFIG.numbers.whatsappDisplay = document.getElementById('cfg-whatsapp-display').value;
+      APP_CONFIG.numbers.vagas = parseInt(document.getElementById('cfg-vagas').value)||0;
+      for(let i=0;i<3;i++){
+        APP_CONFIG.numbers.counters[i] = {
+          value: parseInt(document.getElementById('cfg-counter-'+(i+1)).value)||0,
+          label: document.getElementById('cfg-counter-'+(i+1)+'-lbl').value
+        };
+      }
+      break;
+    case 'profile':
+      APP_CONFIG.profile.avatar = document.getElementById('cfg-avatar').value;
+      APP_CONFIG.profile.splash = document.getElementById('cfg-splash').value;
+      break;
+    case 'cta':
+      APP_CONFIG.cta.eyebrow = document.getElementById('cfg-cta-eyebrow').value;
+      APP_CONFIG.cta.title = document.getElementById('cfg-cta-title').value;
+      APP_CONFIG.cta.sub = document.getElementById('cfg-cta-sub').value;
+      APP_CONFIG.cta.btn = document.getElementById('cfg-cta-btn').value;
+      break;
+    case 'prices':
+      APP_CONFIG.prices.vehicles = document.getElementById('cfg-vehicles').value.split(',').map(s=>s.trim()).filter(Boolean);
+      // Sincroniza tabela com lista de serviços
+      const srvs = APP_CONFIG.services.map(s=>s.name);
+      const newTable = {};
+      srvs.forEach(s=>{
+        newTable[s] = {};
+        APP_CONFIG.prices.vehicles.forEach(v=>{
+          newTable[s][v] = (APP_CONFIG.prices.table[s] && APP_CONFIG.prices.table[s][v]) || 0;
+        });
+      });
+      APP_CONFIG.prices.table = newTable;
+      renderAdminPrices();
+      break;
+    // listas (links, hours, services, gallery, testimonials) já mutam APP_CONFIG via onchange inline
+  }
+  const ok = await saveConfigToFirebase();
+  if(ok || !firebaseReady){
+    renderAll(); // reaplica na home
+    showToast(firebaseReady ? '✓ Salvo no Firebase' : '✓ Salvo (local)');
+  }
+}
+
+function showToast(msg, type){
+  const t = document.getElementById('admin-toast');
+  t.textContent = msg;
+  t.className = 'admin-toast show'+(type==='err'?' err':'');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  FRONTEND — INTERATIVIDADE                                          */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+// ── SPLASH ──
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('splash').classList.add('hide');
+  }, 2000);
+});
+
+// ── PARTICLES ──
+(function(){
+  const wrap = document.getElementById('particles');
+  for(let i=0;i<22;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*2+1;
+    p.style.cssText = `
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;
+      opacity:${Math.random()*0.5+0.1};
+      animation-duration:${Math.random()*20+15}s;
+      animation-delay:${Math.random()*20}s;
+    `;
+    wrap.appendChild(p);
+  }
+})();
+
+// ── COUNTER ANIMATION ──
+function animateCounter(el, target, duration=1800) {
+  let start=0, t0=performance.now();
+  function step(t){
+    const p=Math.min((t-t0)/duration,1);
+    const ease=1-Math.pow(1-p,3);
+    el.textContent=Math.round(ease*target).toLocaleString('pt-BR');
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── GALLERY ──
+let gIdx=0;
+function goSlide(i){
+  const slides=document.querySelectorAll('.gallery-slide');
+  if(!slides.length)return;
+  gIdx=i;
+  document.getElementById('gallery-track').style.transform=`translateX(-${i*100}%)`;
+  document.querySelectorAll('#gallery-dots .gdot').forEach((d,j)=>{d.className='gdot'+(j===i?' a':'')});
+}
+function nextSlide(){const n=document.querySelectorAll('.gallery-slide').length;if(n)goSlide((gIdx+1)%n)}
+function prevSlide(){const n=document.querySelectorAll('.gallery-slide').length;if(n)goSlide((gIdx-1+n)%n)}
+setInterval(nextSlide, 4000);
+
+// gallery swipe
+let gx=0;
+const gt=document.getElementById('gallery-track');
+gt.addEventListener('touchstart',e=>{gx=e.touches[0].clientX},{passive:true});
+gt.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-gx;
+  if(Math.abs(dx)>40){dx<0?nextSlide():prevSlide()}
+},{passive:true});
+
+// ── TESTIMONIALS ──
+let tIdx=0;
+function goTesti(i){
+  const cards=document.querySelectorAll('.testi-card');
+  if(!cards.length)return;
+  tIdx=i;
+  document.getElementById('testi-track').style.transform=`translateX(calc(-${i*(100)}% - ${i*12}px))`;
+  document.querySelectorAll('#testi-dots .gdot').forEach((d,j)=>{d.className='gdot'+(j===i?' a':'')});
+}
+setInterval(()=>{const n=document.querySelectorAll('.testi-card').length;if(n)goTesti((tIdx+1)%n)},5000);
+
+let tx=0;
+const tt=document.getElementById('testi-track');
+tt.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+tt.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  const n=document.querySelectorAll('.testi-card').length;
+  if(Math.abs(dx)>40 && n){dx<0?goTesti((tIdx+1)%n):goTesti((tIdx-1+n)%n)}
+},{passive:true});
+
+// ── CALCULATOR ──
+const calcState={vehicle:null,service:null};
+function selectCalc(type,btn,val){
+  document.querySelectorAll(`#calc-${type} .calc-opt`).forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  calcState[type]=val;
+  updateCalc();
+}
+function updateCalc(){
+  const r=document.getElementById('calc-result');
+  if(calcState.vehicle&&calcState.service){
+    const price=(APP_CONFIG.prices.table[calcState.service]||{})[calcState.vehicle];
+    if(price){
+      r.innerHTML=`<div class="calc-price">R$${price}</div><div class="calc-price-lbl">${calcState.service} · ${calcState.vehicle}</div>`;
+    } else {
+      r.innerHTML='<p class="calc-empty">Preço indisponível</p>';
+    }
+  } else {
+    r.innerHTML='<p class="calc-empty">Selecione veículo e serviço</p>';
+  }
+}
+
+// ── COPY PHONE ──
+function copyPhone(e){
+  e.preventDefault();e.stopPropagation();
+  navigator.clipboard.writeText(APP_CONFIG.numbers.whatsapp).catch(()=>{});
+  const fb=document.getElementById('copy-feedback');
+  if(fb){fb.style.opacity='1';setTimeout(()=>fb.style.opacity='0',2500)}
+}
+
+// ── BOOKING ──
+function sendBooking(){
+  const name=document.getElementById('bk-name').value.trim();
+  const car=document.getElementById('bk-car').value.trim();
+  const service=document.getElementById('bk-service').value;
+  const date=document.getElementById('bk-date').value;
+  const obs=document.getElementById('bk-obs').value.trim();
+  if(!name||!car||!service){alert('Preencha nome, veículo e serviço.');return}
+  const msg=`Olá DZ7! Quero agendar um serviço:\n\n👤 Nome: ${name}\n🚗 Veículo: ${car}\n⭐ Serviço: ${service}${date?`\n📅 Data: ${date}`:''}${obs?`\n📝 Obs: ${obs}`:''}\n\nAguardo confirmação!`;
+  window.open(`https://wa.me/${APP_CONFIG.numbers.whatsapp}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+// ── SHEETS ──
+function openSheet(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
+function closeSheet(id){document.getElementById(id).classList.remove('open');document.body.style.overflow=''}
+document.querySelectorAll('.sheet').forEach(s=>{
+  let sy=0;
+  s.addEventListener('touchstart',e=>{sy=e.touches[0].clientY},{passive:true});
+  s.addEventListener('touchend',e=>{if(e.changedTouches[0].clientY-sy>80)closeSheet(s.id)},{passive:true});
+});
+
+// ── SCROLL APPEAR ──
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:0.12});
+document.querySelectorAll('.appear').forEach(el=>obs.observe(el));
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/*  BOOTSTRAP                                                          */
+/* ═══════════════════════════════════════════════════════════════════ */
+(async function bootstrap(){
+  initFirebase();
+  await loadConfigFromFirebase();
+  renderAll();
+  // re-aplica observer aos novos .appear (nenhum nesse caso, já está)
+})();
+</script>
 </body>
 </html>
