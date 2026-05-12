@@ -877,6 +877,7 @@ header{width:100%;display:flex;flex-direction:column;align-items:center;padding-
 <!-- ═══════════════════════════════════════════════════ -->
 <div id="admin-panel">
   <div class="admin-header">
+    <button class="admin-logout" onclick="adminBack()" style="margin-right:auto">← Voltar</button>
     <h1>DZ7 <span>ADMIN</span></h1>
     <button class="admin-logout" onclick="adminLogout()">Sair</button>
   </div>
@@ -1201,6 +1202,8 @@ const ADMIN_PASSWORD = "000000";
 /* ═══════════════════════════════════════════════════════════════════ */
 let db = null;
 let firebaseReady = false;
+let realtimeUnsub = null;
+let pendingLocalWrite = 0; // evita eco do próprio write
 const CONFIG_DOC = "main"; // documento único: collection "siteConfig" / doc "main"
 const COLLECTION = "siteConfig";
 
@@ -1208,11 +1211,11 @@ let APP_CONFIG = JSON.parse(JSON.stringify(DEFAULT_CONFIG)); // clone
 
 function initFirebase(){
   try{
-    if(FIREBASE_CONFIG.apiKey.startsWith("COLE_AQUI")){
+    if(!FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith("COLE_AQUI")){
       console.warn("[Firebase] Credenciais não configuradas. Usando configuração local.");
       return false;
     }
-    firebase.initializeApp(FIREBASE_CONFIG);
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
     firebaseReady = true;
     console.log("[Firebase] Inicializado com sucesso");
@@ -1223,25 +1226,41 @@ function initFirebase(){
   }
 }
 
+function applyRemoteConfig(data){
+  APP_CONFIG = Object.assign({}, DEFAULT_CONFIG, data);
+  Object.keys(DEFAULT_CONFIG).forEach(k=>{
+    if(APP_CONFIG[k]==null) APP_CONFIG[k] = DEFAULT_CONFIG[k];
+  });
+  try{ renderAll(); }catch(e){ console.error(e); }
+  // se painel admin aberto, re-popula campos
+  const panel = document.getElementById('admin-panel');
+  if(panel && panel.classList.contains('show')){
+    try{ populateAdminPanel(); }catch(e){ console.error(e); }
+  }
+}
+
 async function loadConfigFromFirebase(){
   if(!firebaseReady) return false;
   try{
-    const doc = await db.collection(COLLECTION).doc(CONFIG_DOC).get();
+    const ref = db.collection(COLLECTION).doc(CONFIG_DOC);
+    const doc = await ref.get();
     if(doc.exists){
-      const data = doc.data();
-      APP_CONFIG = Object.assign({}, DEFAULT_CONFIG, data);
-      // garante chaves
-      Object.keys(DEFAULT_CONFIG).forEach(k=>{
-        if(!APP_CONFIG[k]) APP_CONFIG[k] = DEFAULT_CONFIG[k];
-      });
-      console.log("[Firebase] Config carregada");
-      return true;
+      applyRemoteConfig(doc.data());
     } else {
-      // primeiro acesso: salva padrão
-      await db.collection(COLLECTION).doc(CONFIG_DOC).set(DEFAULT_CONFIG);
+      await ref.set(DEFAULT_CONFIG);
       console.log("[Firebase] Config padrão criada");
-      return true;
     }
+    // listener tempo real (DOWN-stream)
+    if(realtimeUnsub) realtimeUnsub();
+    realtimeUnsub = ref.onSnapshot(snap=>{
+      if(!snap.exists) return;
+      // ignora eco de writes locais (evita recarregar enquanto digita)
+      if(pendingLocalWrite > 0){ pendingLocalWrite--; return; }
+      const src = snap.metadata.hasPendingWrites ? 'local' : 'remote';
+      console.log("[Firebase] snapshot ("+src+")");
+      if(src==='remote') applyRemoteConfig(snap.data());
+    }, err=> console.error("[Firebase] onSnapshot erro:", err));
+    return true;
   }catch(e){
     console.error("[Firebase] Erro ao carregar:", e);
     return false;
@@ -1254,9 +1273,11 @@ async function saveConfigToFirebase(){
     return false;
   }
   try{
+    pendingLocalWrite++; // marca para o snapshot ignorar
     await db.collection(COLLECTION).doc(CONFIG_DOC).set(APP_CONFIG);
     return true;
   }catch(e){
+    pendingLocalWrite = Math.max(0,pendingLocalWrite-1);
     console.error("[Firebase] Erro ao salvar:", e);
     showToast("Erro ao salvar: "+e.message,"err");
     return false;
@@ -1523,6 +1544,12 @@ function adminLogin(){
 function adminLogout(){
   document.getElementById('admin-panel').classList.remove('show');
   document.body.style.overflow = '';
+}
+function adminBack(){
+  // Volta para a home sem deslogar (visualizar mudanças no site)
+  document.getElementById('admin-panel').classList.remove('show');
+  document.body.style.overflow = '';
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter' && document.getElementById('admin-login').classList.contains('show')){
